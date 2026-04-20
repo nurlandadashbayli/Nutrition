@@ -65,6 +65,7 @@ export default function IntakeLog() {
 
     const totalCalories = Number((food.calories * servings).toFixed(1));
     const totalProtein = Number((food.protein * servings).toFixed(1));
+    const totalFat = Number(((food.fat || 0) * servings).toFixed(1));
 
     try {
       setError('');
@@ -78,6 +79,7 @@ export default function IntakeLog() {
         servings: Number(servings),
         totalCalories,
         totalProtein,
+        totalFat,
         createdAt: new Date().toISOString()
       });
       setServings(1);
@@ -100,6 +102,7 @@ export default function IntakeLog() {
 
   const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
   const dailyProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
+  const dailyFat = logs.reduce((sum, log) => sum + (log.totalFat || 0), 0);
 
   return (
     <div>
@@ -165,6 +168,10 @@ export default function IntakeLog() {
           <div className="summary-value">{dailyProtein.toFixed(1)}</div>
           <div className="summary-label">Total Protein (g)</div>
         </div>
+        <div className="summary-item">
+          <div className="summary-value">{dailyFat.toFixed(1)}</div>
+          <div className="summary-label">Total Fat (g)</div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: '2rem' }}>
@@ -179,6 +186,7 @@ export default function IntakeLog() {
                 <th>Servings</th>
                 <th>Calories</th>
                 <th>Protein</th>
+                <th>Fat</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
@@ -192,6 +200,7 @@ export default function IntakeLog() {
                   <td>{log.servings}</td>
                   <td>{log.totalCalories}</td>
                   <td>{log.totalProtein}g</td>
+                  <td>{log.totalFat !== undefined ? log.totalFat : '-'}g</td>
                   <td style={{ textAlign: 'right' }}>
                     <button 
                       onClick={() => handleDeleteLog(log.id)}
