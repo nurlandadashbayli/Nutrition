@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function IntakeLog() {
   const [foods, setFoods] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [weeklyLogs, setWeeklyLogs] = useState([]);
   
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedFoodId, setSelectedFoodId] = useState('');
@@ -18,6 +19,7 @@ export default function IntakeLog() {
   useEffect(() => {
     if (currentUser) {
       fetchFoods();
+      fetchWeeklyLogs();
     }
   }, [currentUser]);
 
@@ -49,10 +51,42 @@ export default function IntakeLog() {
       );
       const querySnapshot = await getDocs(q);
       const logList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      logList.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       setLogs(logList);
     } catch (err) {
       console.error(err);
       setError('Failed to fetch logs.');
+    }
+  }
+
+  async function fetchWeeklyLogs() {
+    try {
+      // Get dates for the last 7 days
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().split('T')[0]);
+      }
+
+      const earliestDate = dates[dates.length - 1];
+      
+      // Querying only by userId to avoid composite index requirement for date range
+      // We can filter the dates in memory
+      const q = query(
+        collection(db, 'logs'),
+        where('userId', '==', currentUser.uid)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const allUserLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter for logs within the last 7 days
+      const filteredLogs = allUserLogs.filter(log => log.date >= earliestDate);
+      
+      setWeeklyLogs(filteredLogs);
+    } catch (err) {
+      console.error('Failed to fetch weekly logs:', err);
     }
   }
 
@@ -84,6 +118,7 @@ export default function IntakeLog() {
       });
       setServings(1);
       fetchLogs();
+      fetchWeeklyLogs();
     } catch (err) {
       setError('Failed to add log.');
     } finally {
@@ -95,6 +130,7 @@ export default function IntakeLog() {
     try {
       await deleteDoc(doc(db, 'logs', id));
       fetchLogs();
+      fetchWeeklyLogs();
     } catch (err) {
       console.error('Failed to delete log', err);
     }
@@ -103,6 +139,30 @@ export default function IntakeLog() {
   const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
   const dailyProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
   const dailyFat = logs.reduce((sum, log) => sum + (log.totalFat || 0), 0);
+
+  // Calculate weekly data
+  const getLast7Days = () => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push({
+        date: d.toISOString().split('T')[0],
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        calories: 0
+      });
+    }
+    return days;
+  };
+
+  const weeklyData = getLast7Days().map(day => {
+    const dayCalories = weeklyLogs
+      .filter(log => log.date === day.date)
+      .reduce((sum, log) => sum + log.totalCalories, 0);
+    return { ...day, calories: dayCalories };
+  });
+
+  const maxCalories = Math.max(...weeklyData.map(d => d.calories), 2000);
 
   return (
     <div>
@@ -215,6 +275,26 @@ export default function IntakeLog() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <h3>Weekly Calorie Intake</h3>
+        <div className="chart-container">
+          {weeklyData.map((day, idx) => (
+            <div key={day.date} className="chart-column">
+              <div className="chart-bar-wrapper">
+                <div 
+                  className="chart-bar" 
+                  style={{ height: `${(day.calories / maxCalories) * 100}%` }}
+                >
+                  <div className="chart-value">{day.calories.toFixed(0)}</div>
+                  <div className="chart-tooltip">{day.calories.toFixed(0)} kcal</div>
+                </div>
+              </div>
+              <div className="chart-label">{day.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -36,7 +36,7 @@ export default function FoodManagement() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!name || !servingSize || !calories || !protein || !fat) return;
+    if (!name || !servingSize || calories === '' || protein === '' || fat === '') return;
 
     try {
       setError('');
