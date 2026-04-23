@@ -89,6 +89,7 @@ a {
 
 .form-control {
   width: 100%;
+  height: 48px; /* Fixed height for perfect alignment */
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-family: inherit;
@@ -97,6 +98,15 @@ a {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+  display: block;
+}
+
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
 }
 
 .form-control:focus {
@@ -110,7 +120,9 @@ a {
 }
 
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 500;
   text-align: center;
   vertical-align: middle;
@@ -118,10 +130,19 @@ a {
   border: 1px solid transparent;
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
-  line-height: 1.5;
   border-radius: var(--border-radius);
   transition: all 0.2s ease;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Primary buttons should match form control height */
+.btn-primary, .btn-primary-action {
+  height: 48px;
+}
+
+[data-theme='dark'] select.form-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23e0e0e0' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
 }
 
 .btn-primary {
@@ -210,6 +231,43 @@ a {
 .mb-4 { margin-bottom: 1rem; }
 .text-center { text-align: center; }
 
+.flex-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.weight-card {
+  padding: 1rem 1.5rem;
+  background: linear-gradient(to right, var(--secondary-bg), var(--bg-color));
+}
+
+@media (max-width: 640px) {
+  .weight-card {
+    padding: 1rem;
+  }
+}
+
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .flex-group {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .header-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -261,7 +319,11 @@ th {
   align-items: flex-end;
 }
 
-.food-picker > div {
+.food-picker > div:first-child {
+  flex: 2;
+}
+
+.food-picker > div:nth-child(2) {
   flex: 1;
 }
 
@@ -348,4 +410,80 @@ th {
   font-size: 0.75rem;
   font-weight: 500;
   opacity: 0.7;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .nav {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .nav-links {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .food-picker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .food-picker > div.action {
+    margin-top: 0.5rem;
+  }
+
+  .summary-card {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+
+  .summary-value {
+    font-size: 1.5rem;
+    margin-bottom: 0;
+  }
+
+  .summary-label {
+    order: -1;
+  }
+
+  /* Table responsiveness */
+  .card {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 500px;
+  }
+
+  /* Adjust chart for mobile */
+  .chart-container {
+    height: 150px;
+    gap: 0.25rem;
+  }
+
+  .chart-value {
+    font-size: 0.6rem;
+    top: -15px;
+  }
+
+  .chart-label {
+    font-size: 0.65rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
 }

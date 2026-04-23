@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Login from './components/Login';
 import FoodManagement from './pages/FoodManagement';
 import IntakeLog from './pages/IntakeLog';
+import WeightManagement from './pages/WeightManagement';
 import { useAuth } from './contexts/AuthContext';
 
 function PrivateRoute({ children }) {
@@ -31,6 +32,14 @@ function App() {
             element={
               <PrivateRoute>
                 <FoodManagement />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/weight" 
+            element={
+              <PrivateRoute>
+                <WeightManagement />
               </PrivateRoute>
             } 
           />

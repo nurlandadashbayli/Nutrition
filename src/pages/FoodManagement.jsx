@@ -115,7 +115,7 @@ export default function FoodManagement() {
             <label className="form-label">Serving Size (e.g., 250g, 1 cup)</label>
             <input type="text" className="form-control" value={servingSize} onChange={e => setServingSize(e.target.value)} required />
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="flex-group">
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">Calories</label>
               <input type="number" className="form-control" value={calories} onChange={e => setCalories(e.target.value)} required min="0" step="0.1" />
@@ -129,7 +129,7 @@ export default function FoodManagement() {
               <input type="number" className="form-control" value={fat} onChange={e => setFat(e.target.value)} required min="0" step="0.1" />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="flex-group">
             <button disabled={loading} type="submit" className="btn btn-primary mt-2">
               {editingId ? 'Update Food' : 'Add Food'}
             </button>

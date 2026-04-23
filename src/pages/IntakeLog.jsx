@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function IntakeLog() {
@@ -14,6 +14,10 @@ export default function IntakeLog() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  const [weight, setWeight] = useState('');
+  const [weightId, setWeightId] = useState(null);
+  const [savingWeight, setSavingWeight] = useState(false);
+  
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -26,6 +30,7 @@ export default function IntakeLog() {
   useEffect(() => {
     if (currentUser && date) {
       fetchLogs();
+      fetchWeight();
     }
   }, [currentUser, date]);
 
@@ -51,11 +56,57 @@ export default function IntakeLog() {
       );
       const querySnapshot = await getDocs(q);
       const logList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      logList.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      logList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setLogs(logList);
     } catch (err) {
       console.error(err);
       setError('Failed to fetch logs.');
+    }
+  }
+
+  async function fetchWeight() {
+    try {
+      setWeight('');
+      setWeightId(null);
+      const q = query(collection(db, 'weights'), 
+        where('userId', '==', currentUser.uid),
+        where('date', '==', date)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const weightDoc = querySnapshot.docs[0];
+        setWeight(weightDoc.data().weight);
+        setWeightId(weightDoc.id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch weight:', err);
+    }
+  }
+
+  async function handleSaveWeight() {
+    if (!weight || weight <= 0) return;
+    try {
+      setSavingWeight(true);
+      const weightData = {
+        userId: currentUser.uid,
+        date,
+        weight: Number(weight),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (weightId) {
+        await updateDoc(doc(db, 'weights', weightId), weightData);
+      } else {
+        await addDoc(collection(db, 'weights'), {
+          ...weightData,
+          createdAt: new Date().toISOString()
+        });
+        fetchWeight(); // Refresh to get the new ID
+      }
+    } catch (err) {
+      console.error('Failed to save weight:', err);
+    } finally {
+      setSavingWeight(false);
     }
   }
 
@@ -136,6 +187,12 @@ export default function IntakeLog() {
     }
   }
 
+  const changeDate = (offset) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + offset);
+    setDate(d.toISOString().split('T')[0]);
+  };
+
   const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
   const dailyProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
   const dailyFat = logs.reduce((sum, log) => sum + (log.totalFat || 0), 0);
@@ -167,15 +224,32 @@ export default function IntakeLog() {
   return (
     <div>
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2>Intake Log</h2>
-          <div>
+        <div className="header-flex">
+          <h2 style={{ margin: 0 }}>Intake Log</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button 
+              onClick={() => changeDate(-1)} 
+              className="btn btn-outline" 
+              style={{ width: '40px', height: '40px', padding: 0 }}
+              title="Previous Day"
+            >
+              ←
+            </button>
             <input 
               type="date" 
               className="form-control" 
+              style={{ width: 'auto' }}
               value={date} 
               onChange={e => setDate(e.target.value)} 
             />
+            <button 
+              onClick={() => changeDate(1)} 
+              className="btn btn-outline" 
+              style={{ width: '40px', height: '40px', padding: 0 }}
+              title="Next Day"
+            >
+              →
+            </button>
           </div>
         </div>
 
@@ -212,11 +286,33 @@ export default function IntakeLog() {
             />
           </div>
           <div className="action">
-            <button disabled={loading || foods.length === 0} type="submit" className="btn btn-primary" style={{ height: '48px' }}>
+            <button disabled={loading || foods.length === 0} type="submit" className="btn btn-primary">
               Add
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="card weight-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h3 style={{ margin: 0 }}>Daily Weight</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input 
+                type="number" 
+                className="form-control" 
+                style={{ width: '100px', height: '40px' }}
+                placeholder="0.0"
+                step="0.1"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                onBlur={handleSaveWeight}
+              />
+              <span style={{ fontSize: '0.875rem', opacity: 0.7 }}>kg</span>
+            </div>
+          </div>
+          {savingWeight && <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>Saving...</span>}
+        </div>
       </div>
 
       <div className="summary-card">
@@ -235,7 +331,7 @@ export default function IntakeLog() {
       </div>
 
       <div className="card" style={{ marginTop: '2rem' }}>
-        <h3>Logs for {date}</h3>
+        <h3>Logs for {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</h3>
         {logs.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No intake logged for this date.</p>
         ) : (
