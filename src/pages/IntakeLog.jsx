@@ -18,6 +18,9 @@ export default function IntakeLog() {
   const [weightId, setWeightId] = useState(null);
   const [savingWeight, setSavingWeight] = useState(false);
   
+  const [weeklyWeights, setWeeklyWeights] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function IntakeLog() {
         });
         fetchWeight(); // Refresh to get the new ID
       }
+      fetchWeeklyLogs();
     } catch (err) {
       console.error('Failed to save weight:', err);
     } finally {
@@ -136,6 +140,23 @@ export default function IntakeLog() {
       const filteredLogs = allUserLogs.filter(log => log.date >= earliestDate);
       
       setWeeklyLogs(filteredLogs);
+
+      // Fetch weights for the same period
+      const weightsQ = query(
+        collection(db, 'weights'),
+        where('userId', '==', currentUser.uid)
+      );
+      const weightsSnapshot = await getDocs(weightsQ);
+      const allWeights = weightsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const filteredWeights = allWeights.filter(w => w.date >= earliestDate);
+      setWeeklyWeights(filteredWeights);
+
+      // Fetch Profile
+      const profRef = doc(db, 'profiles', currentUser.uid);
+      const profSnap = await getDoc(profRef);
+      if (profSnap.exists()) {
+        setUserProfile(profSnap.data());
+      }
     } catch (err) {
       console.error('Failed to fetch weekly logs:', err);
     }
@@ -212,14 +233,44 @@ export default function IntakeLog() {
     return days;
   };
 
+  const calculateTDEE = (w) => {
+    if (!userProfile || !w) return null;
+    const birthDate = new Date(userProfile.birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    if (today.getMonth() < birthDate.getMonth() || (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    const h = Number(userProfile.height);
+    let bmr;
+    if (userProfile.gender === 'male') {
+      bmr = 10 * w + 6.25 * h - 5 * age + 5;
+    } else {
+      bmr = 10 * w + 6.25 * h - 5 * age - 161;
+    }
+    return Math.round(bmr * Number(userProfile.activityLevel));
+  };
+
   const weeklyData = getLast7Days().map(day => {
-    const dayCalories = weeklyLogs
-      .filter(log => log.date === day.date)
-      .reduce((sum, log) => sum + log.totalCalories, 0);
-    return { ...day, calories: dayCalories };
+    const dayLogs = weeklyLogs.filter(log => log.date === day.date);
+    const dayCalories = dayLogs.reduce((sum, log) => sum + log.totalCalories, 0);
+    const dayProtein = dayLogs.reduce((sum, log) => sum + log.totalProtein, 0);
+    
+    const dayWeight = weeklyWeights.find(w => w.date === day.date)?.weight || 0;
+    const targetProtein = dayWeight ? Number((dayWeight * 2.2).toFixed(1)) : 0;
+    
+    const maintenance = calculateTDEE(dayWeight) || 2480;
+    const weeklyGoal = userProfile?.weeklyLossGoal ?? 0.5;
+    const loss = maintenance - (weeklyGoal * 1100);
+    
+    return { ...day, calories: dayCalories, protein: dayProtein, targetProtein, maintenance, loss, hasWeight: !!dayWeight };
   });
 
-  const maxCalories = Math.max(...weeklyData.map(d => d.calories), 2000);
+  const selectedDayWeight = weight || 0;
+  const selectedDayTarget = selectedDayWeight ? Number((selectedDayWeight * 2.2).toFixed(1)) : 0;
+
+  const maxCalories = Math.max(...weeklyData.map(d => Math.max(d.calories, d.maintenance)), 2000);
+  const maxProtein = Math.max(...weeklyData.map(d => Math.max(d.protein, d.targetProtein, selectedDayTarget)), 100);
 
   return (
     <div>
@@ -379,17 +430,172 @@ export default function IntakeLog() {
           {weeklyData.map((day, idx) => (
             <div key={day.date} className="chart-column">
               <div className="chart-bar-wrapper">
+                {/* Maintenance Target Marker */}
+                {day.hasWeight && (
+                  <div 
+                    style={{ 
+                      position: 'absolute',
+                      bottom: `${(day.maintenance / maxCalories) * 100}%`,
+                      width: '70%',
+                      maxWidth: '40px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      height: '2px',
+                      backgroundColor: 'var(--error-color)',
+                      zIndex: 7,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '-18px', 
+                      left: '50%', 
+                      transform: 'translateX(-50%)',
+                      fontSize: '0.6rem',
+                      fontWeight: '800',
+                      color: 'var(--error-color)',
+                      whiteSpace: 'nowrap',
+                      textShadow: '0 0 4px var(--secondary-bg)'
+                    }}>
+                      {day.maintenance}
+                    </div>
+                  </div>
+                )}
+
+                {/* Loss Target Marker */}
+                {day.hasWeight && (
+                  <div 
+                    style={{ 
+                      position: 'absolute',
+                      bottom: `${(day.loss / maxCalories) * 100}%`,
+                      width: '70%',
+                      maxWidth: '40px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      height: '2px',
+                      backgroundColor: 'rgb(100, 116, 139)',
+                      zIndex: 7,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '-18px', 
+                      left: '50%', 
+                      transform: 'translateX(-50%)',
+                      fontSize: '0.6rem',
+                      fontWeight: '800',
+                      color: 'rgb(100, 116, 139)',
+                      whiteSpace: 'nowrap',
+                      textShadow: '0 0 4px var(--secondary-bg)'
+                    }}>
+                      {day.loss}
+                    </div>
+                  </div>
+                )}
+
                 <div 
                   className="chart-bar" 
-                  style={{ height: `${(day.calories / maxCalories) * 100}%` }}
+                  style={{ height: `${(day.calories / maxCalories) * 100}%`, zIndex: 6 }}
                 >
-                  <div className="chart-value">{day.calories.toFixed(0)}</div>
-                  <div className="chart-tooltip">{day.calories.toFixed(0)} kcal</div>
+                  <div className="chart-value" style={{ bottom: '5px', top: 'auto', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                    {day.calories.toFixed(0)}
+                  </div>
+                  <div className="chart-tooltip">
+                    {day.calories.toFixed(0)} kcal consumed
+                    {day.hasWeight && (
+                      <div style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.25rem' }}>
+                        Maintenance: {day.maintenance} kcal<br/>
+                        Weight Loss: {day.loss} kcal
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="chart-label">{day.label}</div>
             </div>
           ))}
+        </div>
+        <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.75rem', opacity: 0.7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ width: '12px', height: '12px', backgroundColor: '#3b82f6', borderRadius: '2px' }}></div>
+            <span>Intake</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ width: '12px', height: '2px', backgroundColor: 'var(--error-color)' }}></div>
+            <span>Maintenance</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ width: '12px', height: '2px', backgroundColor: 'rgb(100, 116, 139)' }}></div>
+            <span>Weight Loss Target</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <h3>Weekly Protein Intake</h3>
+        <div className="chart-container">
+          {weeklyData.map((day, idx) => (
+            <div key={day.date} className="chart-column">
+              <div className="chart-bar-wrapper">
+                {/* Daily Target Marker */}
+                {day.targetProtein > 0 && (
+                  <div 
+                    style={{ 
+                      position: 'absolute',
+                      bottom: `${(day.targetProtein / maxProtein) * 100}%`,
+                      width: '70%',
+                      maxWidth: '40px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      height: '2px',
+                      backgroundColor: 'var(--error-color)',
+                      zIndex: 7,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '-18px', 
+                      left: '50%', 
+                      transform: 'translateX(-50%)',
+                      fontSize: '0.65rem',
+                      fontWeight: '800',
+                      color: 'var(--error-color)',
+                      whiteSpace: 'nowrap',
+                      textShadow: '0 0 4px var(--secondary-bg)'
+                    }}>
+                      {day.targetProtein.toFixed(0)}
+                    </div>
+                  </div>
+                )}
+
+                <div 
+                  className="chart-bar protein" 
+                  style={{ height: `${(day.protein / maxProtein) * 100}%`, zIndex: 6 }}
+                >
+                  <div className="chart-value" style={{ bottom: '5px', top: 'auto', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                    {day.protein.toFixed(0)}
+                  </div>
+                  <div className="chart-tooltip">
+                    {day.protein.toFixed(1)} g consumed
+                    {day.targetProtein > 0 && <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>Target: {day.targetProtein} g</div>}
+                  </div>
+                </div>
+              </div>
+              <div className="chart-label">{day.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', opacity: 0.7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ width: '12px', height: '12px', backgroundColor: '#10b981', borderRadius: '2px' }}></div>
+            <span>Intake</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div style={{ width: '12px', height: '2px', backgroundColor: 'var(--error-color)' }}></div>
+            <span>Daily Target (BW x 2.2)</span>
+          </div>
         </div>
       </div>
     </div>

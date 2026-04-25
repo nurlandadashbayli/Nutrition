@@ -373,6 +373,14 @@ th {
   background-color: #2563eb;
 }
 
+.chart-bar.protein {
+  background-color: #10b981; /* Modern green */
+}
+
+.chart-bar.protein:hover {
+  background-color: #059669;
+}
+
 .chart-value {
   position: absolute;
   top: -20px;
@@ -486,4 +494,44 @@ th {
   h2 {
     font-size: 1.25rem;
   }
+}
+
+/* Modern Slider Styling */
+.custom-slider-container {
+  padding: 1rem 0;
+}
+
+.modern-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  outline: none;
+  margin: 1rem 0;
+}
+
+.modern-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  background: #4a5568; /* Dark grey thumb */
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+  transition: transform 0.1s ease;
+}
+
+.modern-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.modern-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: #4a5568;
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
 }

@@ -37,6 +37,7 @@ export default function Navbar() {
             <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>Intake Log</Link>
             <Link to="/foods" className={`nav-link ${location.pathname === '/foods' ? 'active' : ''}`}>Foods</Link>
             <Link to="/weight" className={`nav-link ${location.pathname === '/weight' ? 'active' : ''}`}>Weight</Link>
+            <Link to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Profile</Link>
             <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '0.4rem 1rem', width: 'auto' }}>Log Out</button>
           </>
         )}
