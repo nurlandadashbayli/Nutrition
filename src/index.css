@@ -543,3 +543,233 @@ th {
   border-radius: 50%;
   border: none;
 }
+
+/* Recipe & Tags */
+.tag-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background-color: var(--primary-color);
+  color: var(--button-text);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 0.4rem;
+  margin-bottom: 0.4rem;
+  transition: opacity 0.2s ease;
+}
+
+.recipe-summary {
+  background: linear-gradient(135deg, rgba(74, 85, 104, 0.05), rgba(74, 85, 104, 0.1));
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  margin-top: 2rem;
+}
+
+.ingredient-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ingredient-row label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+@media (min-width: 640px) {
+  .ingredient-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .ingredient-row label {
+    flex: 1;
+    margin-bottom: 0;
+  }
+  
+  .ingredient-row .flex-group {
+    flex: 2;
+  }
+}
+/* Modern Mobile App Style Recipes */
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.recipe-card {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  aspect-ratio: 1 / 1.1;
+  text-align: center;
+}
+
+.recipe-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px var(--shadow-color);
+  border-color: var(--primary-color);
+}
+
+.recipe-card.active {
+  background: var(--primary-color);
+  color: var(--button-text);
+  border-color: var(--primary-color);
+}
+
+.recipe-card .icon {
+  font-size: 2.5rem;
+}
+
+.recipe-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.recipe-card:hover .recipe-card-actions {
+  opacity: 1;
+}
+
+.card-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--secondary-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-action-btn:hover {
+  background: var(--bg-color);
+  border-color: var(--primary-color);
+}
+
+.card-action-btn.delete:hover {
+  border-color: var(--error-color);
+  color: var(--error-color);
+}
+
+.recipe-card span {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.recipe-card.add-new {
+  border: 2px dashed var(--border-color);
+  background: transparent;
+  box-shadow: none;
+}
+
+.recipe-card.add-new:hover {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ingredient-item {
+  background: var(--bg-color);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  position: relative;
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.ingredient-item:hover {
+  border-color: var(--border-color);
+}
+
+.remove-ingredient {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--error-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.add-ingredient-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px dashed var(--primary-color);
+  background: transparent;
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  margin: 1.5rem 0;
+  transition: all 0.2s ease;
+}
+
+.add-ingredient-btn:hover {
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.recipe-summary-floating {
+  position: sticky;
+  bottom: 1.5rem;
+  left: 0;
+  right: 0;
+  background: var(--secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 -10px 25px var(--shadow-color);
+  z-index: 100;
+}
+
+/* Hide spin buttons for cleaner numeric inputs */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

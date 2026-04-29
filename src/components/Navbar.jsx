@@ -35,6 +35,7 @@ export default function Navbar() {
         {currentUser && (
           <>
             <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>Intake Log</Link>
+            <Link to="/recipes" className={`nav-link ${location.pathname === '/recipes' ? 'active' : ''}`}>Recipes</Link>
             <Link to="/foods" className={`nav-link ${location.pathname === '/foods' ? 'active' : ''}`}>Foods</Link>
             <Link to="/weight" className={`nav-link ${location.pathname === '/weight' ? 'active' : ''}`}>Weight</Link>
             <Link to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Profile</Link>

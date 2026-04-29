@@ -10,7 +10,7 @@ export default function IntakeLog() {
   
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedFoodId, setSelectedFoodId] = useState('');
-  const [servings, setServings] = useState(1);
+  const [weightInput, setWeightInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -42,6 +42,7 @@ export default function IntakeLog() {
       const q = query(collection(db, 'foods'), where('userId', '==', currentUser.uid));
       const querySnapshot = await getDocs(q);
       const foodList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      foodList.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(foodList);
       if (foodList.length > 0) {
         setSelectedFoodId(foodList[0].id);
@@ -164,14 +165,18 @@ export default function IntakeLog() {
 
   async function handleAddLog(e) {
     e.preventDefault();
-    if (!selectedFoodId || servings <= 0) return;
+    if (!selectedFoodId || weightInput <= 0) return;
 
     const food = foods.find(f => f.id === selectedFoodId);
     if (!food) return;
 
-    const totalCalories = Number((food.calories * servings).toFixed(1));
-    const totalProtein = Number((food.protein * servings).toFixed(1));
-    const totalFat = Number(((food.fat || 0) * servings).toFixed(1));
+    const baseWeight = parseFloat(food.servingSize) || 100;
+    const ratio = Number(weightInput) / baseWeight;
+
+    const totalCalories = Number((food.calories * ratio).toFixed(1));
+    const totalProtein = Number((food.protein * ratio).toFixed(1));
+    const totalCarbs = Number(((food.carbs || 0) * ratio).toFixed(1));
+    const totalFat = Number(((food.fat || 0) * ratio).toFixed(1));
 
     try {
       setError('');
@@ -182,13 +187,14 @@ export default function IntakeLog() {
         foodId: food.id,
         foodName: food.name,
         servingSize: food.servingSize,
-        servings: Number(servings),
+        weight: Number(weightInput),
         totalCalories,
         totalProtein,
+        totalCarbs,
         totalFat,
         createdAt: new Date().toISOString()
       });
-      setServings(1);
+      setWeightInput('');
       fetchLogs();
       fetchWeeklyLogs();
     } catch (err) {
@@ -216,6 +222,7 @@ export default function IntakeLog() {
 
   const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
   const dailyProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
+  const dailyCarbs = logs.reduce((sum, log) => sum + (log.totalCarbs || 0), 0);
   const dailyFat = logs.reduce((sum, log) => sum + (log.totalFat || 0), 0);
 
   // Calculate weekly data
@@ -324,14 +331,15 @@ export default function IntakeLog() {
             </select>
           </div>
           <div>
-            <label className="form-label">Servings</label>
+            <label className="form-label">Weight (g/ml)</label>
             <input 
               type="number" 
               className="form-control" 
-              value={servings} 
-              onChange={e => setServings(e.target.value)} 
-              min="0.1" 
-              step="0.1" 
+              value={weightInput} 
+              onChange={e => setWeightInput(e.target.value)} 
+              placeholder="e.g. 150"
+              min="1" 
+              step="1" 
               required 
               disabled={foods.length === 0}
             />
@@ -376,6 +384,10 @@ export default function IntakeLog() {
           <div className="summary-label">Total Protein (g)</div>
         </div>
         <div className="summary-item">
+          <div className="summary-value">{dailyCarbs.toFixed(1)}</div>
+          <div className="summary-label">Total Carbs (g)</div>
+        </div>
+        <div className="summary-item">
           <div className="summary-value">{dailyFat.toFixed(1)}</div>
           <div className="summary-label">Total Fat (g)</div>
         </div>
@@ -390,9 +402,10 @@ export default function IntakeLog() {
             <thead>
               <tr>
                 <th>Food</th>
-                <th>Servings</th>
+                <th>Weight</th>
                 <th>Calories</th>
                 <th>Protein</th>
+                <th>Carbs</th>
                 <th>Fat</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
@@ -402,11 +415,12 @@ export default function IntakeLog() {
                 <tr key={log.id}>
                   <td>
                     {log.foodName}
-                    <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{log.servingSize} per serving</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{log.servingSize} base</div>
                   </td>
-                  <td>{log.servings}</td>
-                  <td>{log.totalCalories}</td>
+                  <td>{log.weight !== undefined ? `${log.weight}g` : `${log.servings} serv`}</td>
+                   <td>{log.totalCalories}</td>
                   <td>{log.totalProtein}g</td>
+                  <td>{log.totalCarbs !== undefined ? log.totalCarbs : '-'}g</td>
                   <td>{log.totalFat !== undefined ? log.totalFat : '-'}g</td>
                   <td style={{ textAlign: 'right' }}>
                     <button 

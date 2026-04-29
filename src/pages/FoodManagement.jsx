@@ -10,6 +10,8 @@ export default function FoodManagement() {
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
   const [fat, setFat] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -27,6 +29,7 @@ export default function FoodManagement() {
       const q = query(collection(db, 'foods'), where('userId', '==', currentUser.uid));
       const querySnapshot = await getDocs(q);
       const foodList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      foodList.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(foodList);
     } catch (err) {
       console.error(err);
@@ -36,19 +39,23 @@ export default function FoodManagement() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!name || !servingSize || calories === '' || protein === '' || fat === '') return;
+    if (!name || !servingSize || calories === '' || protein === '' || fat === '' || carbs === '') return;
 
     try {
       setError('');
       setLoading(true);
       
+      const tagsArray = tags.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag !== '');
+
       const foodData = {
         userId: currentUser.uid,
         name,
         servingSize,
         calories: Number(calories),
         protein: Number(protein),
-        fat: Number(fat)
+        fat: Number(fat),
+        carbs: Number(carbs),
+        tags: tagsArray
       };
 
       if (editingId) {
@@ -63,6 +70,8 @@ export default function FoodManagement() {
       setCalories('');
       setProtein('');
       setFat('');
+      setCarbs('');
+      setTags('');
       fetchFoods();
     } catch (err) {
       setError('Failed to save food.');
@@ -78,6 +87,8 @@ export default function FoodManagement() {
     setCalories(food.calories);
     setProtein(food.protein);
     setFat(food.fat !== undefined ? food.fat : 0);
+    setCarbs(food.carbs !== undefined ? food.carbs : 0);
+    setTags(food.tags ? food.tags.join(', ') : '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -88,6 +99,8 @@ export default function FoodManagement() {
     setCalories('');
     setProtein('');
     setFat('');
+    setCarbs('');
+    setTags('');
   }
 
   async function handleDelete(id) {
@@ -125,9 +138,17 @@ export default function FoodManagement() {
               <input type="number" className="form-control" value={protein} onChange={e => setProtein(e.target.value)} required min="0" step="0.1" />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Carbs (g)</label>
+              <input type="number" className="form-control" value={carbs} onChange={e => setCarbs(e.target.value)} required min="0" step="0.1" />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">Fat (g)</label>
               <input type="number" className="form-control" value={fat} onChange={e => setFat(e.target.value)} required min="0" step="0.1" />
             </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tags (e.g., milk, fruit, whey - comma separated)</label>
+            <input type="text" className="form-control" value={tags} onChange={e => setTags(e.target.value)} placeholder="milk, fruit, whey" />
           </div>
           <div className="flex-group">
             <button disabled={loading} type="submit" className="btn btn-primary mt-2">
@@ -154,7 +175,9 @@ export default function FoodManagement() {
                 <th>Serving Size</th>
                 <th>Calories</th>
                 <th>Protein (g)</th>
+                <th>Carbs (g)</th>
                 <th>Fat (g)</th>
+                <th>Tags</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -165,7 +188,15 @@ export default function FoodManagement() {
                   <td>{food.servingSize}</td>
                   <td>{food.calories}</td>
                   <td>{food.protein}</td>
+                  <td>{food.carbs !== undefined ? food.carbs : '-'}</td>
                   <td>{food.fat !== undefined ? food.fat : '-'}</td>
+                  <td>
+                    {food.tags && food.tags.map(tag => (
+                      <span key={tag} className="tag-badge">
+                        {tag}
+                      </span>
+                    ))}
+                  </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                       <button 
