@@ -234,6 +234,7 @@ export default function IntakeLog() {
       days.push({
         date: d.toISOString().split('T')[0],
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateLabel: `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}`,
         calories: 0
       });
     }
@@ -526,7 +527,9 @@ export default function IntakeLog() {
                   </div>
                 </div>
               </div>
-              <div className="chart-label">{day.label}</div>
+              <div className="chart-label" style={{ textAlign: 'center', width: '100%' }}>
+                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{day.dateLabel}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -597,7 +600,9 @@ export default function IntakeLog() {
                   </div>
                 </div>
               </div>
-              <div className="chart-label">{day.label}</div>
+              <div className="chart-label" style={{ textAlign: 'center', width: '100%' }}>
+                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{day.dateLabel}</div>
+              </div>
             </div>
           ))}
         </div>
