@@ -3,15 +3,25 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 
+// Configuration from Environment Variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCmJFFC4KjAtO6LeiguFnKu8ebSWHOISEQ",
-  authDomain: "nutrition-faebd.firebaseapp.com",
-  projectId: "nutrition-faebd",
-  storageBucket: "nutrition-faebd.firebasestorage.app",
-  messagingSenderId: "1036063379439",
-  appId: "1:1036063379439:web:3e36b3e04f2f1e898b701a",
-  measurementId: "G-JZJ9GN9GB7"
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID
 };
+
+// Check if variables exist
+const missingKeys = Object.entries(firebaseConfig)
+  .filter(([key, value]) => !value)
+  .map(([key]) => key);
+
+if (missingKeys.length > 0) {
+  console.error(`❌ Error: Missing Environment Variables: ${missingKeys.join(', ')}`);
+  process.exit(1);
+}
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -44,8 +54,6 @@ const server = createServer(async (req, res) => {
           return;
         }
 
-        console.log(`Received request to update weight for ${username} on ${date} to ${weight}kg`);
-
         // Authenticate user
         const userCredential = await signInWithEmailAndPassword(auth, username, password);
         const user = userCredential.user;
@@ -66,39 +74,28 @@ const server = createServer(async (req, res) => {
         };
 
         if (!querySnapshot.empty) {
-          // Update existing entry
           const docId = querySnapshot.docs[0].id;
           await updateDoc(doc(db, 'weights', docId), weightData);
-          console.log(`Updated existing weight entry for ${date}`);
         } else {
-          // Add new entry
           weightData.createdAt = new Date().toISOString();
           await addDoc(collection(db, 'weights'), weightData);
-          console.log(`Created new weight entry for ${date}`);
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: `Weight updated to ${weight} for ${date}` }));
       } catch (error) {
-        console.error('Error processing request:', error.message);
+        console.error('Error:', error.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: error.message }));
       }
     });
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found. Use POST /update-weight' }));
+    res.end(JSON.stringify({ error: 'Not found' }));
   }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`\n=========================================`);
-  console.log(`🏋️ Weight API Server Running!`);
-  console.log(`URL: http://localhost:${PORT}/update-weight`);
-  console.log(`=========================================\n`);
-  console.log(`Example usage with curl:`);
-  console.log(`curl -X POST http://localhost:${PORT}/update-weight \\`);
-  console.log(`  -H "Content-Type: application/json" \\`);
-  console.log(`  -d '{"username":"your-email@example.com", "password":"your-password", "date":"2026-05-02", "weight":75.5}'\n`);
+  console.log(`🚀 API Server running on port ${PORT}`);
 });
