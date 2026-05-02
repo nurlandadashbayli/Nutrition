@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, limit, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function WeightManagement() {
@@ -59,20 +59,20 @@ export default function WeightManagement() {
         updatedAt: new Date().toISOString()
       };
 
-      if (editingId) {
+      // Use a deterministic document ID so the web app and the iOS REST Shortcut stay perfectly in sync
+      const docId = `${currentUser.uid}_${date}`;
+
+      if (editingId && editingId !== docId) {
+        // If they are editing an old random-ID document, update that specific one
         await updateDoc(doc(db, 'weights', editingId), weightData);
         setEditingId(null);
       } else {
-        // Check if weight for this date already exists
-        const existing = weights.find(w => w.date === date);
-        if (existing) {
-          await updateDoc(doc(db, 'weights', existing.id), weightData);
-        } else {
-          await addDoc(collection(db, 'weights'), {
+        // Use setDoc to overwrite or create for this specific date
+        // Note: we use merge: true so we don't blow away createdAt if it exists
+        await setDoc(doc(db, 'weights', docId), {
             ...weightData,
-            createdAt: new Date().toISOString()
-          });
-        }
+            createdAt: weightData.createdAt || new Date().toISOString()
+        }, { merge: true });
       }
 
       setWeight('');
