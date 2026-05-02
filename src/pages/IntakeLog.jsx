@@ -3,12 +3,16 @@ import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
+const getLocalDateString = (d = new Date()) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export default function IntakeLog() {
   const [foods, setFoods] = useState([]);
   const [logs, setLogs] = useState([]);
   const [weeklyLogs, setWeeklyLogs] = useState([]);
   
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDateString());
   const [selectedFoodId, setSelectedFoodId] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -122,7 +126,7 @@ export default function IntakeLog() {
       for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        dates.push(d.toISOString().split('T')[0]);
+        dates.push(getLocalDateString(d));
       }
 
       const earliestDate = dates[dates.length - 1];
@@ -217,7 +221,7 @@ export default function IntakeLog() {
   const changeDate = (offset) => {
     const d = new Date(date);
     d.setDate(d.getDate() + offset);
-    setDate(d.toISOString().split('T')[0]);
+    setDate(getLocalDateString(d));
   };
 
   const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
@@ -232,7 +236,7 @@ export default function IntakeLog() {
       const d = new Date();
       d.setDate(d.getDate() - i);
       days.push({
-        date: d.toISOString().split('T')[0],
+        date: getLocalDateString(d),
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
         dateLabel: `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}`,
         calories: 0
