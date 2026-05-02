@@ -14,7 +14,7 @@
 
   --border-radius: 8px;
   --transition-speed: 0.3s;
-  
+
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -45,7 +45,12 @@ body {
   transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   margin-bottom: 1rem;
 }
@@ -89,7 +94,8 @@ a {
 
 .form-control {
   width: 100%;
-  height: 48px; /* Fixed height for perfect alignment */
+  height: 48px;
+  /* Fixed height for perfect alignment */
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-family: inherit;
@@ -137,7 +143,8 @@ select.form-control {
 }
 
 /* Primary buttons should match form control height */
-.btn-primary, .btn-primary-action {
+.btn-primary,
+.btn-primary-action {
   height: 48px;
 }
 
@@ -204,7 +211,8 @@ select.form-control {
   font-weight: 500;
 }
 
-.nav-link:hover, .nav-link.active {
+.nav-link:hover,
+.nav-link.active {
   opacity: 1;
 }
 
@@ -232,12 +240,29 @@ select.form-control {
   margin-top: 0.5rem;
 }
 
-.mt-1 { margin-top: 0.25rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-4 { margin-top: 1rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-.text-center { text-align: center; }
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.text-center {
+  text-align: center;
+}
 
 .flex-group {
   display: flex;
@@ -282,7 +307,8 @@ table {
   margin-top: 1rem;
 }
 
-th, td {
+th,
+td {
   padding: 0.75rem;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
@@ -327,15 +353,15 @@ th {
   align-items: flex-end;
 }
 
-.food-picker > div:first-child {
+.food-picker>div:first-child {
   flex: 2;
 }
 
-.food-picker > div:nth-child(2) {
+.food-picker>div:nth-child(2) {
   flex: 1;
 }
 
-.food-picker > div.action {
+.food-picker>div.action {
   flex: 0 0 auto;
 }
 
@@ -373,7 +399,8 @@ th {
 .chart-bar {
   width: 70%;
   max-width: 40px;
-  background-color: #3b82f6; /* Modern blue */
+  background-color: #3b82f6;
+  /* Modern blue */
   border-radius: 4px 4px 0 0;
   transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -385,7 +412,8 @@ th {
 }
 
 .chart-bar.protein {
-  background-color: #10b981; /* Modern green */
+  background-color: #10b981;
+  /* Modern green */
 }
 
 .chart-bar.protein:hover {
@@ -454,7 +482,7 @@ th {
     align-items: stretch;
   }
 
-  .food-picker > div.action {
+  .food-picker>div.action {
     margin-top: 0.5rem;
   }
 
@@ -528,7 +556,8 @@ th {
   appearance: none;
   width: 24px;
   height: 24px;
-  background: #4a5568; /* Dark grey thumb */
+  background: #4a5568;
+  /* Dark grey thumb */
   cursor: pointer;
   border-radius: 50%;
   border: none;
@@ -589,16 +618,17 @@ th {
     align-items: center;
     justify-content: space-between;
   }
-  
+
   .ingredient-row label {
     flex: 1;
     margin-bottom: 0;
   }
-  
+
   .ingredient-row .flex-group {
     flex: 2;
   }
 }
+
 /* Modern Mobile App Style Recipes */
 .recipe-grid {
   display: grid;
@@ -731,7 +761,7 @@ th {
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .add-ingredient-btn {
@@ -774,6 +804,40 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Workout Specific */
+.workout-card-session {
+  border: 1px solid var(--border-color);
+  background: var(--secondary-bg);
+  box-shadow: 0 4px 20px var(--shadow-color);
+  transition: transform 0.2s ease;
+}
+
+.workout-card-session:hover {
+  transform: translateY(-2px);
+}
+
+.sets-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sets-list .form-control {
+  background: var(--bg-color);
+  border: 1px solid transparent;
+}
+
+.sets-list .form-control:focus {
+  background: var(--input-bg);
+  border-color: var(--primary-color);
+}
+
+@media (max-width: 640px) {
+  .workout-card-session {
+    padding: 1rem !important;
+  }
 }

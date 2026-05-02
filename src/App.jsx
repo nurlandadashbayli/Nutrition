@@ -7,6 +7,7 @@ import IntakeLog from './pages/IntakeLog';
 import WeightManagement from './pages/WeightManagement';
 import Profile from './pages/Profile';
 import Recipes from './pages/Recipes';
+import Workout from './pages/Workout';
 import { useAuth } from './contexts/AuthContext';
 
 function PrivateRoute({ children }) {
@@ -42,6 +43,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Recipes />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/workout" 
+            element={
+              <PrivateRoute>
+                <Workout />
               </PrivateRoute>
             } 
           />
