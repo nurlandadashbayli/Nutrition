@@ -1,16 +1,9 @@
 import { createServer } from 'http';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, setPersistence, inMemoryPersistence } from 'firebase/auth';
-import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 // Configuration from Environment Variables
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
   projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID
 };
 
 // Check if variables exist
@@ -22,11 +15,6 @@ if (missingKeys.length > 0) {
   console.error(`❌ Error: Missing Environment Variables: ${missingKeys.join(', ')}`);
   process.exit(1);
 }
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-setPersistence(auth, inMemoryPersistence);
-const db = getFirestore(app);
 
 const server = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -65,39 +53,56 @@ const server = createServer(async (req, res) => {
 
         console.log(`⏳ Attempting login for: ${username}`);
 
-        // Authenticate user
-        const userCredential = await signInWithEmailAndPassword(auth, username, password);
-        const user = userCredential.user;
-        
-        console.log(`✅ Login successful for UID: ${user.uid}`);
-        console.log(`⏳ Checking for existing weight on date: ${date}`);
+        // 1. Authenticate user via REST API
+        const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseConfig.apiKey}`;
+        const authRes = await fetch(authUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: username, password, returnSecureToken: true })
+        });
+        const authData = await authRes.json();
 
-        // Check if weight for this date exists
-        const q = query(
-          collection(db, 'weights'),
-          where('userId', '==', user.uid),
-          where('date', '==', date)
-        );
-        const querySnapshot = await getDocs(q);
-
-        const weightData = {
-          userId: user.uid,
-          date: date,
-          weight: Number(weight),
-          updatedAt: new Date().toISOString()
-        };
-
-        if (!querySnapshot.empty) {
-          // Update existing entry
-          const docId = querySnapshot.docs[0].id;
-          await updateDoc(doc(db, 'weights', docId), weightData);
-          console.log(`✨ Updated existing weight for ${date}`);
-        } else {
-          // Add new entry
-          weightData.createdAt = new Date().toISOString();
-          await addDoc(collection(db, 'weights'), weightData);
-          console.log(`✨ Created new weight entry for ${date}`);
+        if (!authRes.ok) {
+           throw new Error(authData.error?.message || 'Authentication failed');
         }
+        
+        const idToken = authData.idToken;
+        const localId = authData.localId; // This is the userId
+        console.log(`✅ Login successful for UID: ${localId}`);
+
+        // 2. We don't need to check if it exists, we can use a custom Document ID and PATCH it.
+        // Document ID format: userId_date
+        const docId = `${localId}_${date}`;
+        
+        console.log(`⏳ Updating weight on date: ${date}`);
+
+        // Firestore REST API URL
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/weights/${docId}`;
+        
+        // Use PATCH to create or update
+        const updateRes = await fetch(firestoreUrl, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            fields: {
+              userId: { stringValue: localId },
+              date: { stringValue: date },
+              weight: { doubleValue: Number(weight) },
+              updatedAt: { stringValue: new Date().toISOString() },
+              createdAt: { stringValue: new Date().toISOString() } // It's okay if this overwrites on update for simplicity
+            }
+          })
+        });
+
+        if (!updateRes.ok) {
+            const errData = await updateRes.json();
+            throw new Error(errData.error?.message || 'Failed to update Firestore');
+        }
+
+        console.log(`✨ Successfully updated weight for ${date}`);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: `Weight updated to ${weight} for ${date}` }));
