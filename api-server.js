@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, setPersistence, inMemoryPersistence } from 'firebase/auth';
 import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 // Configuration from Environment Variables
@@ -25,6 +25,7 @@ if (missingKeys.length > 0) {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+setPersistence(auth, inMemoryPersistence);
 const db = getFirestore(app);
 
 const server = createServer(async (req, res) => {
@@ -56,14 +57,20 @@ const server = createServer(async (req, res) => {
         const { username, password, date, weight } = data;
 
         if (!username || !password || !date || !weight) {
+          console.error('❌ Missing fields:', { username: !!username, password: !!password, date, weight });
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Missing required fields: username (email), password, date, weight' }));
           return;
         }
 
+        console.log(`⏳ Attempting login for: ${username}`);
+
         // Authenticate user
         const userCredential = await signInWithEmailAndPassword(auth, username, password);
         const user = userCredential.user;
+        
+        console.log(`✅ Login successful for UID: ${user.uid}`);
+        console.log(`⏳ Checking for existing weight on date: ${date}`);
 
         // Check if weight for this date exists
         const q = query(
@@ -81,11 +88,15 @@ const server = createServer(async (req, res) => {
         };
 
         if (!querySnapshot.empty) {
+          // Update existing entry
           const docId = querySnapshot.docs[0].id;
           await updateDoc(doc(db, 'weights', docId), weightData);
+          console.log(`✨ Updated existing weight for ${date}`);
         } else {
+          // Add new entry
           weightData.createdAt = new Date().toISOString();
           await addDoc(collection(db, 'weights'), weightData);
+          console.log(`✨ Created new weight entry for ${date}`);
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
