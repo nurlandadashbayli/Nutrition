@@ -38,6 +38,13 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // Wake up endpoint
+  if (req.url === '/ping') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'awake' }));
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/update-weight') {
     let body = '';
     req.on('data', chunk => {
