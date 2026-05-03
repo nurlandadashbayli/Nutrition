@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
     birthday: '',
     height: '',
@@ -68,6 +70,15 @@ export default function Profile() {
       setMessage('Failed to update profile.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Failed to log out", error);
     }
   }
 
@@ -206,9 +217,14 @@ export default function Profile() {
             </div>
           </div>
 
-          <button disabled={saving} type="submit" className="btn btn-primary mt-4">
-            Save Profile
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button disabled={saving} type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+              Save Profile
+            </button>
+            <button type="button" onClick={handleLogout} className="btn btn-outline" style={{ flex: 1, borderColor: 'var(--error-color)', color: 'var(--error-color)' }}>
+              Log Out
+            </button>
+          </div>
         </form>
       </div>
 
