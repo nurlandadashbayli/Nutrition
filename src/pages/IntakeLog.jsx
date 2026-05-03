@@ -11,20 +11,20 @@ export default function IntakeLog() {
   const [foods, setFoods] = useState([]);
   const [logs, setLogs] = useState([]);
   const [weeklyLogs, setWeeklyLogs] = useState([]);
-  
+
   const [date, setDate] = useState(getLocalDateString());
   const [selectedFoodId, setSelectedFoodId] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [weight, setWeight] = useState('');
   const [weightId, setWeightId] = useState(null);
   const [savingWeight, setSavingWeight] = useState(false);
-  
+
   const [weeklyWeights, setWeeklyWeights] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
-  
+
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function IntakeLog() {
 
   async function fetchLogs() {
     try {
-      const q = query(collection(db, 'logs'), 
+      const q = query(collection(db, 'logs'),
         where('userId', '==', currentUser.uid),
         where('date', '==', date)
       );
@@ -76,7 +76,7 @@ export default function IntakeLog() {
     try {
       setWeight('');
       setWeightId(null);
-      const q = query(collection(db, 'weights'), 
+      const q = query(collection(db, 'weights'),
         where('userId', '==', currentUser.uid),
         where('date', '==', date)
       );
@@ -130,20 +130,20 @@ export default function IntakeLog() {
       }
 
       const earliestDate = dates[dates.length - 1];
-      
+
       // Querying only by userId to avoid composite index requirement for date range
       // We can filter the dates in memory
       const q = query(
         collection(db, 'logs'),
         where('userId', '==', currentUser.uid)
       );
-      
+
       const querySnapshot = await getDocs(q);
       const allUserLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
+
       // Filter for logs within the last 7 days
       const filteredLogs = allUserLogs.filter(log => log.date >= earliestDate);
-      
+
       setWeeklyLogs(filteredLogs);
 
       // Fetch weights for the same period
@@ -267,14 +267,14 @@ export default function IntakeLog() {
     const dayLogs = weeklyLogs.filter(log => log.date === day.date);
     const dayCalories = dayLogs.reduce((sum, log) => sum + log.totalCalories, 0);
     const dayProtein = dayLogs.reduce((sum, log) => sum + log.totalProtein, 0);
-    
+
     const dayWeight = weeklyWeights.find(w => w.date === day.date)?.weight || 0;
     const targetProtein = dayWeight ? Number((dayWeight * 2.2).toFixed(1)) : 0;
-    
+
     const maintenance = calculateTDEE(dayWeight) || 2480;
     const weeklyGoal = userProfile?.weeklyLossGoal ?? 0.5;
     const loss = maintenance - (weeklyGoal * 1100);
-    
+
     return { ...day, calories: dayCalories, protein: dayProtein, targetProtein, maintenance, loss, hasWeight: !!dayWeight };
   });
 
@@ -284,30 +284,40 @@ export default function IntakeLog() {
   const maxCalories = Math.max(...weeklyData.map(d => Math.max(d.calories, d.maintenance)), 2000);
   const maxProtein = Math.max(...weeklyData.map(d => Math.max(d.protein, d.targetProtein, selectedDayTarget)), 100);
 
+  const currentWeightForTarget = weight || (weeklyWeights.length > 0 ? weeklyWeights[0].weight : 70);
+  const currentTDEE = calculateTDEE(currentWeightForTarget) || 2400;
+  const targetLoss = userProfile?.weeklyLossGoal ?? 0.5;
+  const targetCalories = Math.round(currentTDEE - (targetLoss * 1100));
+  
+  const targetProtein = Math.round(currentWeightForTarget * 2.2);
+  const targetFat = Math.round(currentWeightForTarget * 1.0);
+  const remainingCals = targetCalories - (targetProtein * 4) - (targetFat * 9);
+  const targetCarbs = Math.max(0, Math.round(remainingCals / 4));
+
   return (
     <div>
       <div className="card">
         <div className="header-flex">
-          <h2 style={{ margin: 0 }}>Intake Log</h2>
+          <h2 style={{ margin: 0 }}>Diet Log</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button 
-              onClick={() => changeDate(-1)} 
-              className="btn btn-outline" 
+            <button
+              onClick={() => changeDate(-1)}
+              className="btn btn-outline"
               style={{ width: '40px', height: '40px', padding: 0 }}
               title="Previous Day"
             >
               ←
             </button>
-            <input 
-              type="date" 
-              className="form-control" 
+            <input
+              type="date"
+              className="form-control"
               style={{ width: 'auto' }}
-              value={date} 
-              onChange={e => setDate(e.target.value)} 
+              value={date}
+              onChange={e => setDate(e.target.value)}
             />
-            <button 
-              onClick={() => changeDate(1)} 
-              className="btn btn-outline" 
+            <button
+              onClick={() => changeDate(1)}
+              className="btn btn-outline"
               style={{ width: '40px', height: '40px', padding: 0 }}
               title="Next Day"
             >
@@ -321,9 +331,9 @@ export default function IntakeLog() {
         <form onSubmit={handleAddLog} className="food-picker">
           <div>
             <label className="form-label">Food</label>
-            <select 
-              className="form-control" 
-              value={selectedFoodId} 
+            <select
+              className="form-control"
+              value={selectedFoodId}
               onChange={e => setSelectedFoodId(e.target.value)}
               disabled={foods.length === 0}
             >
@@ -337,15 +347,15 @@ export default function IntakeLog() {
           </div>
           <div>
             <label className="form-label">Weight (g/ml)</label>
-            <input 
-              type="number" 
-              className="form-control" 
-              value={weightInput} 
-              onChange={e => setWeightInput(e.target.value)} 
+            <input
+              type="number"
+              className="form-control"
+              value={weightInput}
+              onChange={e => setWeightInput(e.target.value)}
               placeholder="e.g. 150"
-              min="1" 
-              step="1" 
-              required 
+              min="1"
+              step="1"
+              required
               disabled={foods.length === 0}
             />
           </div>
@@ -362,9 +372,9 @@ export default function IntakeLog() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <h3 style={{ margin: 0 }}>Daily Weight</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input 
-                type="number" 
-                className="form-control" 
+              <input
+                type="number"
+                className="form-control"
                 style={{ width: '100px', height: '40px' }}
                 placeholder="0.0"
                 step="0.1"
@@ -379,22 +389,59 @@ export default function IntakeLog() {
         </div>
       </div>
 
-      <div className="summary-card">
-        <div className="summary-item">
-          <div className="summary-value">{dailyCalories.toFixed(1)}</div>
-          <div className="summary-label">Total Calories (kcal)</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+        {/* Calories Card */}
+        <div className="card" style={{ padding: '1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-color)' }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Calories</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
+            <div>
+              <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{dailyCalories.toFixed(0)} cal</span>
+              <span style={{ opacity: 0.5, marginLeft: '0.5rem', fontWeight: '500' }}>/ {targetCalories}</span>
+            </div>
+            <div style={{ opacity: 0.7, fontWeight: '500' }}>{Math.max(0, targetCalories - dailyCalories).toFixed(0)} left</div>
+          </div>
+          <div style={{ width: '100%', height: '12px', backgroundColor: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${Math.min(100, (dailyCalories / targetCalories) * 100)}%`, backgroundColor: 'var(--primary-color)', borderRadius: '6px', transition: 'width 0.3s ease' }}></div>
+          </div>
         </div>
-        <div className="summary-item">
-          <div className="summary-value">{dailyProtein.toFixed(1)}</div>
-          <div className="summary-label">Total Protein (g)</div>
-        </div>
-        <div className="summary-item">
-          <div className="summary-value">{dailyCarbs.toFixed(1)}</div>
-          <div className="summary-label">Total Carbs (g)</div>
-        </div>
-        <div className="summary-item">
-          <div className="summary-value">{dailyFat.toFixed(1)}</div>
-          <div className="summary-label">Total Fat (g)</div>
+
+        {/* Macros Card */}
+        <div className="card" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', boxShadow: 'var(--shadow-color)' }}>
+          {/* Protein */}
+          <div style={{ flex: 1, paddingRight: '1rem' }}>
+            <div style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Protein</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dailyProtein.toFixed(0)} g</span>
+              <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetProtein}</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyProtein / targetProtein) * 100)}%`, backgroundColor: '#f59e0b', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+            </div>
+          </div>
+          
+          {/* Carbs */}
+          <div style={{ flex: 1, paddingRight: '1rem' }}>
+            <div style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Carbs</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dailyCarbs.toFixed(0)} g</span>
+              <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetCarbs}</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyCarbs / targetCarbs) * 100)}%`, backgroundColor: '#10b981', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+            </div>
+          </div>
+
+          {/* Fat */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Fat</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dailyFat.toFixed(0)} g</span>
+              <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetFat}</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyFat / targetFat) * 100)}%`, backgroundColor: '#8b5cf6', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -423,14 +470,14 @@ export default function IntakeLog() {
                     <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{log.servingSize} base</div>
                   </td>
                   <td>{log.weight !== undefined ? `${log.weight}g` : `${log.servings} serv`}</td>
-                   <td>{log.totalCalories}</td>
+                  <td>{log.totalCalories}</td>
                   <td>{log.totalProtein}g</td>
                   <td>{log.totalCarbs !== undefined ? log.totalCarbs : '-'}g</td>
                   <td>{log.totalFat !== undefined ? log.totalFat : '-'}g</td>
                   <td style={{ textAlign: 'right' }}>
-                    <button 
+                    <button
                       onClick={() => handleDeleteLog(log.id)}
-                      className="btn btn-outline" 
+                      className="btn btn-outline"
                       style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto', borderColor: 'var(--error-color)', color: 'var(--error-color)' }}
                     >
                       Delete
@@ -451,8 +498,8 @@ export default function IntakeLog() {
               <div className="chart-bar-wrapper">
                 {/* Maintenance Target Marker */}
                 {day.hasWeight && (
-                  <div 
-                    style={{ 
+                  <div
+                    style={{
                       position: 'absolute',
                       bottom: `${(day.maintenance / maxCalories) * 100}%`,
                       width: '70%',
@@ -465,10 +512,10 @@ export default function IntakeLog() {
                       pointerEvents: 'none'
                     }}
                   >
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '-18px', 
-                      left: '50%', 
+                    <div style={{
+                      position: 'absolute',
+                      top: '-18px',
+                      left: '50%',
                       transform: 'translateX(-50%)',
                       fontSize: '0.6rem',
                       fontWeight: '800',
@@ -483,8 +530,8 @@ export default function IntakeLog() {
 
                 {/* Loss Target Marker */}
                 {day.hasWeight && (
-                  <div 
-                    style={{ 
+                  <div
+                    style={{
                       position: 'absolute',
                       bottom: `${(day.loss / maxCalories) * 100}%`,
                       width: '70%',
@@ -497,10 +544,10 @@ export default function IntakeLog() {
                       pointerEvents: 'none'
                     }}
                   >
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '-18px', 
-                      left: '50%', 
+                    <div style={{
+                      position: 'absolute',
+                      top: '-18px',
+                      left: '50%',
                       transform: 'translateX(-50%)',
                       fontSize: '0.6rem',
                       fontWeight: '800',
@@ -513,8 +560,8 @@ export default function IntakeLog() {
                   </div>
                 )}
 
-                <div 
-                  className="chart-bar" 
+                <div
+                  className="chart-bar"
                   style={{ height: `${(day.calories / maxCalories) * 100}%`, zIndex: 6 }}
                 >
                   <div className="chart-value" style={{ bottom: '5px', top: 'auto', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
@@ -524,7 +571,7 @@ export default function IntakeLog() {
                     {day.calories.toFixed(0)} kcal consumed
                     {day.hasWeight && (
                       <div style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: '0.25rem' }}>
-                        Maintenance: {day.maintenance} kcal<br/>
+                        Maintenance: {day.maintenance} kcal<br />
                         Weight Loss: {day.loss} kcal
                       </div>
                     )}
@@ -561,8 +608,8 @@ export default function IntakeLog() {
               <div className="chart-bar-wrapper">
                 {/* Daily Target Marker */}
                 {day.targetProtein > 0 && (
-                  <div 
-                    style={{ 
+                  <div
+                    style={{
                       position: 'absolute',
                       bottom: `${(day.targetProtein / maxProtein) * 100}%`,
                       width: '70%',
@@ -575,10 +622,10 @@ export default function IntakeLog() {
                       pointerEvents: 'none'
                     }}
                   >
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '-18px', 
-                      left: '50%', 
+                    <div style={{
+                      position: 'absolute',
+                      top: '-18px',
+                      left: '50%',
                       transform: 'translateX(-50%)',
                       fontSize: '0.65rem',
                       fontWeight: '800',
@@ -591,8 +638,8 @@ export default function IntakeLog() {
                   </div>
                 )}
 
-                <div 
-                  className="chart-bar protein" 
+                <div
+                  className="chart-bar protein"
                   style={{ height: `${(day.protein / maxProtein) * 100}%`, zIndex: 6 }}
                 >
                   <div className="chart-value" style={{ bottom: '5px', top: 'auto', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
