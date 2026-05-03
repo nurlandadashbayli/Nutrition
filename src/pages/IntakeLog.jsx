@@ -288,7 +288,7 @@ export default function IntakeLog() {
   const currentTDEE = calculateTDEE(currentWeightForTarget) || 2400;
   const targetLoss = userProfile?.weeklyLossGoal ?? 0.5;
   const targetCalories = Math.round(currentTDEE - (targetLoss * 1100));
-  
+
   const targetProtein = Math.round(currentWeightForTarget * 2.2);
   const targetFat = Math.round(currentWeightForTarget * 1.0);
   const remainingCals = targetCalories - (targetProtein * 4) - (targetFat * 9);
@@ -415,10 +415,10 @@ export default function IntakeLog() {
               <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetProtein}</span>
             </div>
             <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, (dailyProtein / targetProtein) * 100)}%`, backgroundColor: '#f59e0b', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyProtein / targetProtein) * 100)}%`, backgroundColor: '#6CA34D', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
             </div>
           </div>
-          
+
           {/* Carbs */}
           <div style={{ flex: 1, paddingRight: '1rem' }}>
             <div style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Carbs</div>
@@ -427,7 +427,7 @@ export default function IntakeLog() {
               <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetCarbs}</span>
             </div>
             <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, (dailyCarbs / targetCarbs) * 100)}%`, backgroundColor: '#10b981', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyCarbs / targetCarbs) * 100)}%`, backgroundColor: '#E47A2E', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
             </div>
           </div>
 
@@ -439,54 +439,46 @@ export default function IntakeLog() {
               <span style={{ opacity: 0.5, fontSize: '0.875rem', marginLeft: '0.25rem', fontWeight: '500' }}>/ {targetFat}</span>
             </div>
             <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, (dailyFat / targetFat) * 100)}%`, backgroundColor: '#8b5cf6', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
+              <div style={{ height: '100%', width: `${Math.min(100, (dailyFat / targetFat) * 100)}%`, backgroundColor: '#F3B605', borderRadius: '4px', transition: 'width 0.3s ease' }}></div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: '2rem' }}>
-        <h3>Logs for {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</h3>
+        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>Logs for {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</h3>
         {logs.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No intake logged for this date.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Food</th>
-                <th>Weight</th>
-                <th>Calories</th>
-                <th>Protein</th>
-                <th>Carbs</th>
-                <th>Fat</th>
-                <th style={{ textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map(log => (
-                <tr key={log.id}>
-                  <td>
-                    {log.foodName}
-                    <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{log.servingSize} base</div>
-                  </td>
-                  <td>{log.weight !== undefined ? `${log.weight}g` : `${log.servings} serv`}</td>
-                  <td>{log.totalCalories}</td>
-                  <td>{log.totalProtein}g</td>
-                  <td>{log.totalCarbs !== undefined ? log.totalCarbs : '-'}g</td>
-                  <td>{log.totalFat !== undefined ? log.totalFat : '-'}g</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button
-                      onClick={() => handleDeleteLog(log.id)}
-                      className="btn btn-outline"
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto', borderColor: 'var(--error-color)', color: 'var(--error-color)' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {logs.map(log => (
+              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-color)' }}>{log.foodName}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    {log.weight !== undefined ? `${log.weight}g` : `${log.servings} servings`}
+                    <span style={{ margin: '0 0.5rem' }}>•</span>
+                    {log.servingSize} base
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-color)' }}>{log.totalCalories} kcal</div>
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      P: {log.totalProtein}g <span style={{ margin: '0 0.25rem', opacity: 0.5 }}>|</span> C: {log.totalCarbs !== undefined ? log.totalCarbs : '-'}g <span style={{ margin: '0 0.25rem', opacity: 0.5 }}>|</span> F: {log.totalFat !== undefined ? log.totalFat : '-'}g
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteLog(log.id)}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.25rem', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Delete"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -578,8 +570,53 @@ export default function IntakeLog() {
                   </div>
                 </div>
               </div>
-              <div className="chart-label" style={{ textAlign: 'center', width: '100%' }}>
-                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{day.dateLabel}</div>
+              <div className="chart-label" style={{ textAlign: 'center', width: '100%', marginTop: '0.5rem' }}>
+                {(() => {
+                  const isSelected = day.date === date;
+                  const hasData = day.calories > 0;
+                  const isExceeded = day.calories > day.loss;
+                  
+                  // status colors
+                  const statusColor = !hasData 
+                    ? 'rgba(59, 130, 246, 0.15)' // pale blue
+                    : (isExceeded ? 'rgba(239, 68, 68, 0.25)' : 'rgba(139, 195, 74, 0.6)'); // pale red or green
+
+                  const cardBg = isSelected ? statusColor : 'var(--secondary-bg)';
+                  const bubbleBg = isSelected ? 'transparent' : statusColor;
+                  const dayNumber = day.dateLabel.split('.')[0];
+                  
+                  return (
+                    <div 
+                      onClick={() => setDate(day.date)}
+                      style={{ 
+                        backgroundColor: cardBg, 
+                        borderRadius: '12px', 
+                        padding: '0.4rem', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '0.25rem',
+                        boxShadow: isSelected ? 'none' : '0 2px 4px var(--shadow-color)',
+                        border: isSelected ? '1px solid transparent' : '1px solid var(--border-color)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <span style={{ fontSize: '0.75rem', fontWeight: '500', opacity: 0.8 }}>{day.label}</span>
+                      <div style={{ 
+                        backgroundColor: bubbleBg, 
+                        borderRadius: '8px', 
+                        width: '100%', 
+                        padding: '0.25rem 0',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        transition: 'background-color 0.2s ease'
+                      }}>
+                        {dayNumber}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ))}

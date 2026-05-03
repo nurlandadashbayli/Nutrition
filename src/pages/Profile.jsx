@@ -101,7 +101,7 @@ export default function Profile() {
     const age = calculateAge(birthday);
     const h = Number(height);
     const w = Number(latestWeight);
-    
+
     let bmr;
     if (gender === 'male') {
       bmr = 10 * w + 6.25 * h - 5 * age + 5;
@@ -117,137 +117,165 @@ export default function Profile() {
   if (loading) return <div className="container"><p>Loading...</p></div>;
 
   return (
-    <div className="container">
-      <div className="card">
-        <h2>Your Profile</h2>
-        <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Complete your profile to calculate your daily caloric targets.</p>
-        
-        {message && (
-          <div className={`error-msg ${message.includes('successfully') ? 'text-center mb-4' : ''}`} style={{ color: message.includes('successfully') ? 'var(--accent-color)' : 'var(--error-color)' }}>
-            {message}
-          </div>
-        )}
+    <div className="container" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '3rem' }}>
+      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Profile</h1>
+        <p style={{ opacity: 0.6, margin: 0 }}>Configure your details for accurate targets</p>
+      </div>
 
+      {message && (
+        <div style={{
+          padding: '1rem',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          textAlign: 'center',
+          backgroundColor: message.includes('successfully') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+          color: message.includes('successfully') ? '#10b981' : '#ef4444',
+          fontWeight: '500'
+        }}>
+          {message}
+        </div>
+      )}
+
+      {/* Stats Summary Widget */}
+      <div className="card" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', boxShadow: 'var(--shadow-color)' }}>
+        <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{latestWeight || '-'}</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>Current (kg)</div>
+        </div>
+        <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{tdee || '-'}</div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>TDEE (kcal)</div>
+        </div>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+            {tdee ? Math.round(tdee - (profile.weeklyLossGoal * 1100)) : '-'}
+          </div>
+          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>Target (kcal)</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '2rem', borderRadius: '16px', boxShadow: 'var(--shadow-color)' }}>
         <form onSubmit={handleSubmit}>
           <div className="flex-group">
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Birthday</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={profile.birthday} 
-                onChange={e => setProfile({...profile, birthday: e.target.value})}
-                required 
+              <label className="form-label" style={{ fontWeight: '500', opacity: 0.8 }}>Birthday</label>
+              <input
+                type="date"
+                className="form-control"
+                value={profile.birthday}
+                onChange={e => setProfile({ ...profile, birthday: e.target.value })}
+                required
               />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Height (cm)</label>
-              <input 
-                type="number" 
-                className="form-control" 
-                value={profile.height} 
-                onChange={e => setProfile({...profile, height: e.target.value})}
+              <label className="form-label" style={{ fontWeight: '500', opacity: 0.8 }}>Height (cm)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={profile.height}
+                onChange={e => setProfile({ ...profile, height: e.target.value })}
                 placeholder="175"
-                required 
+                required
               />
             </div>
           </div>
 
           <div className="flex-group">
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Gender</label>
-              <select 
-                className="form-control" 
+              <label className="form-label" style={{ fontWeight: '500', opacity: 0.8 }}>Gender</label>
+              <select
+                className="form-control"
                 value={profile.gender}
-                onChange={e => setProfile({...profile, gender: e.target.value})}
+                onChange={e => setProfile({ ...profile, gender: e.target.value })}
               >
                 <option value="male">Male</option>
                 <option value="female">Female</option>
               </select>
             </div>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Activity Level</label>
-              <select 
-                className="form-control" 
+              <label className="form-label" style={{ fontWeight: '500', opacity: 0.8 }}>Activity Level</label>
+              <select
+                className="form-control"
                 value={profile.activityLevel}
-                onChange={e => setProfile({...profile, activityLevel: e.target.value})}
+                onChange={e => setProfile({ ...profile, activityLevel: e.target.value })}
               >
-                <option value="1.2">Sedentary (office job, little exercise)</option>
-                <option value="1.375">Lightly Active (1-3 days/week)</option>
-                <option value="1.55">Moderately Active (3-5 days/week)</option>
-                <option value="1.725">Very Active (6-7 days/week)</option>
-                <option value="1.9">Extra Active (physical job & training)</option>
+                <option value="1.2">Sedentary (office)</option>
+                <option value="1.375">Lightly Active (1-3 days)</option>
+                <option value="1.55">Moderately Active (3-5 days)</option>
+                <option value="1.725">Very Active (6-7 days)</option>
+                <option value="1.9">Extra Active (training)</option>
               </select>
             </div>
           </div>
 
           <div className="form-group mt-4">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: '600', letterSpacing: '0.05em', margin: 0, opacity: 0.7 }}>
+              <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: '600', letterSpacing: '0.05em', margin: 0, opacity: 0.8 }}>
                 WEEKLY WEIGHT LOSS GOAL
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ 
-                  backgroundColor: 'var(--input-bg)', 
+                <div style={{
+                  backgroundColor: 'var(--input-bg)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '8px',
-                  padding: '0.5rem 1.25rem',
-                  fontSize: '1.25rem',
+                  padding: '0.4rem 1rem',
+                  fontSize: '1.2rem',
                   fontWeight: '600',
-                  minWidth: '80px',
+                  minWidth: '70px',
                   textAlign: 'center',
-                  boxShadow: 'var(--shadow-color)'
                 }}>
                   {profile.weeklyLossGoal.toFixed(1)}
                 </div>
-                <span style={{ fontSize: '0.875rem', opacity: 0.7 }}>kg</span>
+                <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>kg</span>
               </div>
             </div>
-            
+
             <div className="custom-slider-container">
-              <input 
-                type="range" 
-                className="modern-slider" 
-                min="0" 
-                max="1" 
+              <input
+                type="range"
+                className="modern-slider"
+                min="0"
+                max="1"
                 step="0.1"
-                value={profile.weeklyLossGoal} 
-                onChange={e => setProfile({...profile, weeklyLossGoal: Number(e.target.value)})}
+                value={profile.weeklyLossGoal}
+                onChange={e => setProfile({ ...profile, weeklyLossGoal: Number(e.target.value) })}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button disabled={saving} type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-              Save Profile
-            </button>
-            <button type="button" onClick={handleLogout} className="btn btn-outline" style={{ flex: 1, borderColor: 'var(--error-color)', color: 'var(--error-color)' }}>
-              Log Out
-            </button>
-          </div>
+          <button disabled={saving} type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '2rem', padding: '1rem', borderRadius: '12px', fontSize: '1.1rem', fontWeight: '600' }}>
+            {saving ? 'Saving...' : 'Save Profile'}
+          </button>
         </form>
       </div>
 
-      <div className="summary-card" style={{ marginTop: '2rem' }}>
-        <div className="summary-item">
-          <div className="summary-value">{latestWeight || '-'}</div>
-          <div className="summary-label">Latest Weight (kg)</div>
-        </div>
-        <div className="summary-item">
-          <div className="summary-value">{tdee || '-'}</div>
-          <div className="summary-label">TDEE (Maintenance)</div>
-        </div>
-        <div className="summary-item">
-          <div className="summary-value">{tdee ? Math.round(tdee - (profile.weeklyLossGoal * 1100)) : '-'}</div>
-          <div className="summary-label">Weight Loss Target (kcal)</div>
-        </div>
-      </div>
-
       {!latestWeight && (
-        <p className="mt-4" style={{ opacity: 0.6, fontSize: '0.875rem', textAlign: 'center' }}>
-          * Please record your weight in the Intake Log to calculate TDEE.
+        <p className="mt-4" style={{ opacity: 0.5, fontSize: '0.85rem', textAlign: 'center' }}>
+          * Record your weight in the Diet Log to unlock TDEE calculations.
         </p>
       )}
+
+      {/* Logout Card */}
+      <div className="card" style={{ padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-color)', marginTop: '2rem' }}>
+        <button
+          onClick={handleLogout}
+          className="btn"
+          style={{
+            width: '100%',
+            padding: '1rem',
+            borderRadius: '12px',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            backgroundColor: '#ef4444',
+            color: 'white',
+            border: 'none',
+            boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)'
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }

@@ -70,7 +70,7 @@ a {
 .card {
   background-color: var(--secondary-bg);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 4px 12px var(--shadow-color);
   margin-bottom: 1.5rem;
