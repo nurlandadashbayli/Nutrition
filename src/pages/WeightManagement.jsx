@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 export default function WeightManagement() {
   const [weights, setWeights] = useState([]);
@@ -216,8 +217,7 @@ export default function WeightManagement() {
       </div>
 
       {weights.length > 0 && (
-        <div className="card">
-          <h3>History</h3>
+        <CollapsibleCard title="History" count={weights.length}>
           <table>
             <thead>
               <tr>
@@ -253,7 +253,7 @@ export default function WeightManagement() {
               ))}
             </tbody>
           </table>
-        </div>
+        </CollapsibleCard>
       )}
     </div>
   );

@@ -1,41 +1,68 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Navbar() {
   const { currentUser } = useAuth();
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-  const location = useLocation();
+  const [activeSection, setActiveSection] = useState('home');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    if (!currentUser) return;
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    const sectionIds = ['home', 'diet', 'workout', 'weight', 'recipes', 'foods', 'profile'];
+    const visibilityMap = {};
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          visibilityMap[entry.target.id] = entry.intersectionRatio;
+        });
+
+        // Pick the section with the highest visibility ratio
+        let best = 'home';
+        let bestRatio = 0;
+        for (const id of sectionIds) {
+          if ((visibilityMap[id] || 0) > bestRatio) {
+            bestRatio = visibilityMap[id];
+            best = id;
+          }
+        }
+        setActiveSection(best);
+      },
+      {
+        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+      }
+    );
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [currentUser]);
+
+  const scrollTo = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
-    <nav className="nav">
-      <div className="nav-brand">
-        <h2><Link to="/">NutriTrack</Link></h2>
-      </div>
-      <div className="nav-links">
+    <div className="nav-wrapper">
+      <nav className="pill-nav">
         {currentUser && (
-          <>
-            <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>Diet Log</Link>
-            <Link to="/workout" className={`nav-link ${location.pathname === '/workout' ? 'active' : ''}`}>Workout</Link>
-            <Link to="/weight" className={`nav-link ${location.pathname === '/weight' ? 'active' : ''}`}>Weight</Link>
-            <Link to="/recipes" className={`nav-link ${location.pathname === '/recipes' ? 'active' : ''}`}>Recipes</Link>
-            <Link to="/foods" className={`nav-link ${location.pathname === '/foods' ? 'active' : ''}`}>Foods</Link>
-            <Link to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Profile</Link>
-          </>
+          <div className="nav-links-center">
+            <a href="#home" onClick={(e) => { e.preventDefault(); scrollTo('home'); }} className={`nav-link ${activeSection === 'home' ? 'active' : ''}`}>Home</a>
+            <a href="#diet" onClick={(e) => { e.preventDefault(); scrollTo('diet'); }} className={`nav-link ${activeSection === 'diet' ? 'active' : ''}`}>Diet</a>
+            <a href="#workout" onClick={(e) => { e.preventDefault(); scrollTo('workout'); }} className={`nav-link ${activeSection === 'workout' ? 'active' : ''}`}>Workout</a>
+            <a href="#weight" onClick={(e) => { e.preventDefault(); scrollTo('weight'); }} className={`nav-link ${activeSection === 'weight' ? 'active' : ''}`}>Weight</a>
+            <a href="#recipes" onClick={(e) => { e.preventDefault(); scrollTo('recipes'); }} className={`nav-link ${activeSection === 'recipes' ? 'active' : ''}`}>Recipes</a>
+            <a href="#foods" onClick={(e) => { e.preventDefault(); scrollTo('foods'); }} className={`nav-link ${activeSection === 'foods' ? 'active' : ''}`}>Foods</a>
+            <a href="#profile" onClick={(e) => { e.preventDefault(); scrollTo('profile'); }} className={`nav-link ${activeSection === 'profile' ? 'active' : ''}`}>Profile</a>
+          </div>
         )}
-        <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle theme">
-          {theme === 'light' ? '🌙' : '☀️'}
-        </button>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }

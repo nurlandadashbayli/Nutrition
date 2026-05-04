@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 const getLocalDateString = (d = new Date()) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -445,8 +446,7 @@ export default function IntakeLog() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: '2rem' }}>
-        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>Logs for {new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</h3>
+      <CollapsibleCard title={`Logs for ${new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`} count={logs.length} style={{ marginTop: '2rem' }}>
         {logs.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No intake logged for this date.</p>
         ) : (
@@ -480,7 +480,7 @@ export default function IntakeLog() {
             ))}
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       <div className="card" style={{ marginTop: '2rem' }}>
         <h3>Weekly Calorie Intake</h3>

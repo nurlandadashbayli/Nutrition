@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import CollapsibleCard from '../components/CollapsibleCard';
 
 export default function FoodManagement() {
   const [foods, setFoods] = useState([]);
@@ -163,8 +164,7 @@ export default function FoodManagement() {
         </form>
       </div>
 
-      <div className="card">
-        <h2>Your Foods</h2>
+      <CollapsibleCard title="Your Foods" count={foods.length}>
         {foods.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No foods added yet.</p>
         ) : (
@@ -220,7 +220,7 @@ export default function FoodManagement() {
             </tbody>
           </table>
         )}
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

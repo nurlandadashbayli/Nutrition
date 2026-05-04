@@ -18,6 +18,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     if (currentUser) {
@@ -25,6 +26,15 @@ export default function Profile() {
       fetchLatestWeight();
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   async function fetchProfile() {
     try {
@@ -117,7 +127,7 @@ export default function Profile() {
   if (loading) return <div className="container"><p>Loading...</p></div>;
 
   return (
-    <div className="container" style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '3rem' }}>
+    <div className="container" style={{ margin: '0 auto', paddingBottom: '3rem' }}>
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Profile</h1>
         <p style={{ opacity: 0.6, margin: 0 }}>Configure your details for accurate targets</p>
@@ -255,6 +265,28 @@ export default function Profile() {
           * Record your weight in the Diet Log to unlock TDEE calculations.
         </p>
       )}
+
+      {/* Theme Toggle Card */}
+      <div className="card" style={{ padding: '1.5rem 2rem', borderRadius: '12px', boxShadow: 'var(--shadow-color)', marginTop: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>{theme === 'light' ? '☀️' : '🌙'}</span>
+            <div>
+              <div style={{ fontWeight: '600', fontSize: '1rem' }}>Appearance</div>
+              <div style={{ fontSize: '0.85rem', opacity: 0.5 }}>{theme === 'light' ? 'Light mode' : 'Dark mode'}</div>
+            </div>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            aria-label="Toggle theme"
+          >
+            <div className={`theme-toggle-track ${theme === 'dark' ? 'dark' : ''}`}>
+              <div className="theme-toggle-thumb" />
+            </div>
+          </button>
+        </div>
+      </div>
 
       {/* Logout Card */}
       <div className="card" style={{ padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-color)', marginTop: '2rem' }}>
