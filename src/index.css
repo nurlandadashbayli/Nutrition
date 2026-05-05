@@ -203,7 +203,8 @@ select.form-control {
   display: flex;
   justify-content: center;
   z-index: 1000;
-  pointer-events: none; /* Let clicks pass through if they miss the nav */
+  pointer-events: none;
+  /* Let clicks pass through if they miss the nav */
   padding: 0 1rem;
 }
 
@@ -212,13 +213,21 @@ select.form-control {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: var(--secondary-bg);
-  border: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 10px;
   border-radius: 16px;
   box-shadow: 0 4px 16px var(--shadow-color);
   width: 100%;
-  max-width: 768px; /* 800px container - 32px padding */
+  max-width: 768px;
+  /* 800px container - 32px padding */
+}
+
+[data-theme='dark'] .pill-nav {
+  background-color: rgba(30, 30, 30, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nav-links-center {
@@ -258,14 +267,16 @@ select.form-control {
 
 /* Continuous Page Styles */
 .continuous-page {
-  padding-top: 80px; /* Space for the floating navbar */
+  padding-top: 80px;
+  /* Space for the floating navbar */
   display: flex;
   flex-direction: column;
   gap: 40px;
 }
 
 .page-section {
-  scroll-margin-top: 100px; /* Offset so scrolling to section doesn't hide it under navbar */
+  scroll-margin-top: 100px;
+  /* Offset so scrolling to section doesn't hide it under navbar */
   min-height: 80vh;
 }
 
@@ -477,8 +488,35 @@ select.form-control {
   color: #ef4444;
 }
 
-.hero-sparkline {
+.hero-weight-inset {
   flex-shrink: 0;
+  background: var(--hero-muted);
+  border: 1px solid var(--hero-border);
+  border-radius: 14px;
+  padding: 0.75rem 0.6rem 0.35rem 0.4rem;
+  width: 200px;
+}
+
+.hero-weight-chart {
+  /* no extra margin when inside inset */
+}
+
+.hero-weight-trend-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding-right: 0.25rem;
+  opacity: 0.85;
+}
+
+.hero-weight-trend-line {
+  display: inline-block;
+  width: 16px;
+  border-top: 2px dashed;
+  vertical-align: middle;
 }
 
 /* Workout card */
@@ -859,7 +897,7 @@ th {
     padding: 6px;
     gap: 0.5rem;
   }
-  
+
   .pill-nav::-webkit-scrollbar {
     display: none;
   }
@@ -867,7 +905,7 @@ th {
   .nav-links-center {
     gap: 0.25rem;
   }
-  
+
   .nav-link {
     padding: 6px 12px;
     font-size: 0.85rem;

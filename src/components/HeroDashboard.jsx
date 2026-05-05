@@ -56,8 +56,8 @@ export default function HeroDashboard() {
       const weightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
       const weightsSnap = await getDocs(weightsQ);
       const allWeights = weightsSnap.docs.map(d => d.data());
-      allWeights.sort((a, b) => b.date.localeCompare(a.date));
-      const latestWeight = allWeights.length > 0 ? allWeights[0] : null;
+      allWeights.sort((a, b) => a.date.localeCompare(b.date));
+      const latestWeight = allWeights.length > 0 ? allWeights[allWeights.length - 1] : null;
       const todayWeight = allWeights.find(w => w.date === today);
 
       let targetCal = 2400;
@@ -86,15 +86,19 @@ export default function HeroDashboard() {
         logCount: logs.length
       });
 
-      const last7 = allWeights.slice(0, 7).reverse();
-      const weekAgoWeight = last7.length > 1 ? last7[0].weight : null;
+      // Get last 14 entries for the trend chart
+      const last14 = allWeights.slice(-14);
+      const last7ForDelta = allWeights.slice(-7);
+      const weekAgoWeight = last7ForDelta.length > 1 ? last7ForDelta[0].weight : null;
       const currentWeight = latestWeight ? latestWeight.weight : null;
       const weekDelta = weekAgoWeight && currentWeight ? (currentWeight - weekAgoWeight).toFixed(1) : null;
       setWeightData({
         current: currentWeight,
         todayLogged: !!todayWeight,
         weekDelta,
-        trend: last7.map(w => w.weight),
+        trend: last14.map(w => w.weight),
+        trendDates: last14.map(w => w.date),
+        totalEntries: allWeights.length,
         latestDate: latestWeight ? latestWeight.date : null
       });
 
@@ -120,23 +124,145 @@ export default function HeroDashboard() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const Sparkline = ({ data, color = '#3b82f6' }) => {
+  // Linear regression helper
+  const linearRegression = (data) => {
     if (!data || data.length < 2) return null;
-    const min = Math.min(...data) * 0.998;
-    const max = Math.max(...data) * 1.002;
-    const range = max - min || 1;
-    const w = 140;
-    const h = 50;
-    const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
+    const n = data.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    data.forEach((y, x) => {
+      sumX += x;
+      sumY += y;
+      sumXY += x * y;
+      sumXX += x * x;
+    });
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    return { slope, intercept };
+  };
+
+  const WeightTrendChart = ({ data, dates, color = '#3b82f6' }) => {
+    if (!data || data.length < 2) return (
+      <div style={{ textAlign: 'center', opacity: 0.4, padding: '1rem 0', fontSize: '0.875rem' }}>
+        Need at least 2 entries to show trend
+      </div>
+    );
+
+    const chartW = 200;
+    const chartH = 110;
+    const padLeft = 30;
+    const padRight = 8;
+    const padTop = 10;
+    const padBottom = 20;
+    const plotW = chartW - padLeft - padRight;
+    const plotH = chartH - padTop - padBottom;
+
+    const minVal = Math.min(...data);
+    const maxVal = Math.max(...data);
+    // Add padding to range so points aren't at the very edges
+    const valRange = maxVal - minVal || 1;
+    const yMin = minVal - valRange * 0.15;
+    const yMax = maxVal + valRange * 0.15;
+    const yRange = yMax - yMin;
+
+    const toX = (i) => padLeft + (i / (data.length - 1)) * plotW;
+    const toY = (v) => padTop + plotH - ((v - yMin) / yRange) * plotH;
+
+    // Data points polyline
+    const dataPoints = data.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
+
+    // Gradient fill area
+    const areaPoints = `${toX(0)},${padTop + plotH} ${dataPoints} ${toX(data.length - 1)},${padTop + plotH}`;
+
+    // Linear regression line
+    const reg = linearRegression(data);
+    const regY0 = reg.intercept;
+    const regY1 = reg.slope * (data.length - 1) + reg.intercept;
+
+    // Y-axis labels (3 labels: min, mid, max)
+    const yLabels = [
+      { val: minVal, y: toY(minVal) },
+      { val: (minVal + maxVal) / 2, y: toY((minVal + maxVal) / 2) },
+      { val: maxVal, y: toY(maxVal) },
+    ];
+
+    // X-axis date labels (first, middle, last)
+    const dateLabels = [];
+    if (dates && dates.length > 0) {
+      const fmt = (d) => {
+        const dt = new Date(d + 'T00:00:00');
+        return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      };
+      dateLabels.push({ label: fmt(dates[0]), x: toX(0) });
+      if (dates.length > 2) {
+        const midIdx = Math.floor(dates.length / 2);
+        dateLabels.push({ label: fmt(dates[midIdx]), x: toX(midIdx) });
+      }
+      dateLabels.push({ label: fmt(dates[dates.length - 1]), x: toX(dates.length - 1) });
+    }
+
+    const trendGoingDown = reg.slope <= 0;
+    const trendColor = trendGoingDown ? '#10b981' : '#ef4444';
+    const gradId = 'weightGrad';
+
+    // Per-week rate
+    const perDay = reg.slope;
+    const perWeek = (perDay * 7).toFixed(2);
+
     return (
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
-        <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {(() => {
-          const lastX = w;
-          const lastY = h - ((data[data.length - 1] - min) / range) * h;
-          return <circle cx={lastX} cy={lastY} r="4" fill={color} />;
-        })()}
-      </svg>
+      <div className="hero-weight-chart">
+        <svg width="100%" viewBox={`0 0 ${chartW} ${chartH}`} style={{ overflow: 'visible' }}>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+
+          {/* Horizontal grid lines */}
+          {yLabels.map((yl, i) => (
+            <line key={i} x1={padLeft} y1={yl.y} x2={chartW - padRight} y2={yl.y}
+              stroke="var(--hero-muted)" strokeWidth="0.5" strokeDasharray="4,3" />
+          ))}
+
+          {/* Y-axis labels */}
+          {yLabels.map((yl, i) => (
+            <text key={i} x={padLeft - 4} y={yl.y + 3} textAnchor="end"
+              fontSize="7" fill="var(--hero-text)" opacity="0.5" fontFamily="inherit">
+              {yl.val.toFixed(1)}
+            </text>
+          ))}
+
+          {/* X-axis date labels */}
+          {dateLabels.map((dl, i) => (
+            <text key={i} x={dl.x} y={chartH - 3} textAnchor="middle"
+              fontSize="7" fill="var(--hero-text)" opacity="0.45" fontFamily="inherit">
+              {dl.label}
+            </text>
+          ))}
+
+          {/* Gradient fill area under data line */}
+          <polygon points={areaPoints} fill={`url(#${gradId})`} />
+
+          {/* Data polyline */}
+          <polyline points={dataPoints} fill="none" stroke={color} strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Linear trend line */}
+          <line x1={toX(0)} y1={toY(regY0)} x2={toX(data.length - 1)} y2={toY(regY1)}
+            stroke={trendColor} strokeWidth="1" strokeDasharray="4,3" opacity="0.7" />
+
+          {/* Data point dots */}
+          {data.map((v, i) => (
+            <circle key={i} cx={toX(i)} cy={toY(v)} r={i === data.length - 1 ? 3 : 1.8}
+              fill={i === data.length - 1 ? color : 'var(--hero-bg)'}
+              stroke={color} strokeWidth={i === data.length - 1 ? 0 : 1} />
+          ))}
+        </svg>
+        <div className="hero-weight-trend-label">
+          <span className="hero-weight-trend-line" style={{ borderColor: trendColor }} />
+          <span style={{ color: trendColor }}>{perWeek > 0 ? '+' : ''}{perWeek} kg/week</span>
+        </div>
+      </div>
     );
   };
 
@@ -233,13 +359,17 @@ export default function HeroDashboard() {
                     </div>
                   )}
                 </div>
-                <div className="hero-sparkline">
-                  <Sparkline data={weightData.trend} color={Number(weightData.weekDelta) <= 0 ? '#10b981' : '#ef4444'} />
+                <div className="hero-weight-inset">
+                  <WeightTrendChart
+                    data={weightData.trend}
+                    dates={weightData.trendDates}
+                    color={Number(weightData.weekDelta) <= 0 ? '#10b981' : '#3b82f6'}
+                  />
                 </div>
               </div>
               <div className="hero-card-footer">
                 <span>{weightData.todayLogged ? '✓ Logged today' : '○ Not logged today'}</span>
-                <span>{weightData.trend.length} entries</span>
+                <span>{weightData.totalEntries} total entries</span>
               </div>
             </div>
           ) : (
