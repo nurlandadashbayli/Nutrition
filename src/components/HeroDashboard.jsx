@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 const getLocalDateString = (d = new Date()) => {
@@ -13,31 +13,53 @@ export default function HeroDashboard() {
   const [weightData, setWeightData] = useState(null);
   const [workoutData, setWorkoutData] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [alcoholData, setAlcoholData] = useState(null);
+  const [isEditingAlcohol, setIsEditingAlcohol] = useState(false);
   const [activeCard, setActiveCard] = useState(0);
   const cardsRef = useRef(null);
 
-  // Drag-and-drop state for diet subcards
+  // Drag-and-drop state
   const [dietWidgetOrder, setDietWidgetOrder] = useState(() => {
     try {
       const saved = localStorage.getItem('dietWidgetOrder');
-      return saved ? JSON.parse(saved) : ['ring', 'macros'];
-    } catch { return ['ring', 'macros']; }
+      if (saved) {
+        const order = JSON.parse(saved);
+        if (!order.includes('alcohol')) order.push('alcohol');
+        return order;
+      }
+      return ['ring', 'macros', 'alcohol'];
+    } catch { return ['ring', 'macros', 'alcohol']; }
   });
+  const [weightWidgetOrder, setWeightWidgetOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('weightWidgetOrder');
+      return saved ? JSON.parse(saved) : ['stats', 'chart'];
+    } catch { return ['stats', 'chart']; }
+  });
+  const [workoutWidgetOrder, setWorkoutWidgetOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('workoutWidgetOrder');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
+  const dragGroup = useRef(null);
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
-  const handleDragStart = useCallback((e, id) => {
+  const handleDragStart = useCallback((e, id, group) => {
     dragItem.current = id;
+    dragGroup.current = group;
     setDraggingId(id);
     e.dataTransfer.effectAllowed = 'move';
-    // Need a tiny timeout so the drag ghost renders properly
     setTimeout(() => e.target.classList.add('dragging'), 0);
   }, []);
 
-  const handleDragOver = useCallback((e, id) => {
+  const handleDragOver = useCallback((e, id, group) => {
     e.preventDefault();
+    if (dragGroup.current !== group) return;
     e.dataTransfer.dropEffect = 'move';
     dragOverItem.current = id;
     setDragOverId(id);
@@ -47,24 +69,40 @@ export default function HeroDashboard() {
     setDragOverId(null);
   }, []);
 
-  const handleDrop = useCallback((e) => {
+  const handleDrop = useCallback((e, group) => {
     e.preventDefault();
+    if (dragGroup.current !== group) return;
     const from = dragItem.current;
     const to = dragOverItem.current;
     if (from && to && from !== to) {
-      setDietWidgetOrder(prev => {
-        const newOrder = [...prev];
-        const fromIdx = newOrder.indexOf(from);
-        const toIdx = newOrder.indexOf(to);
-        if (fromIdx !== -1 && toIdx !== -1) {
-          [newOrder[fromIdx], newOrder[toIdx]] = [newOrder[toIdx], newOrder[fromIdx]];
-        }
-        localStorage.setItem('dietWidgetOrder', JSON.stringify(newOrder));
-        return newOrder;
-      });
+      let setOrder, storageKey;
+      if (group === 'diet') {
+        setOrder = setDietWidgetOrder; storageKey = 'dietWidgetOrder';
+      } else if (group === 'weight') {
+        setOrder = setWeightWidgetOrder; storageKey = 'weightWidgetOrder';
+      } else if (group === 'workout') {
+        setOrder = setWorkoutWidgetOrder; storageKey = 'workoutWidgetOrder';
+      }
+
+      if (setOrder) {
+        setOrder(prev => {
+          const newOrder = [...prev];
+          if (!newOrder.includes(from)) newOrder.push(from);
+          if (!newOrder.includes(to)) newOrder.push(to);
+
+          const fromIdx = newOrder.indexOf(from);
+          const toIdx = newOrder.indexOf(to);
+          if (fromIdx !== -1 && toIdx !== -1) {
+            [newOrder[fromIdx], newOrder[toIdx]] = [newOrder[toIdx], newOrder[fromIdx]];
+          }
+          localStorage.setItem(storageKey, JSON.stringify(newOrder));
+          return newOrder;
+        });
+      }
     }
     dragItem.current = null;
     dragOverItem.current = null;
+    dragGroup.current = null;
     setDraggingId(null);
     setDragOverId(null);
   }, []);
@@ -72,6 +110,7 @@ export default function HeroDashboard() {
   const handleDragEnd = useCallback(() => {
     dragItem.current = null;
     dragOverItem.current = null;
+    dragGroup.current = null;
     setDraggingId(null);
     setDragOverId(null);
   }, []);
@@ -89,6 +128,19 @@ export default function HeroDashboard() {
     const index = Math.round(container.scrollLeft / (cardWidth + gap));
     setActiveCard(Math.min(index, 2));
   }, []);
+
+  const handleSetAlcoholDate = async (date) => {
+    if (!currentUser) return;
+    try {
+      await updateDoc(doc(db, 'profiles', currentUser.uid), {
+        lastAlcoholDate: date
+      });
+      setAlcoholData({ lastDate: date });
+      setProfile(prev => ({ ...prev, lastAlcoholDate: date }));
+    } catch (err) {
+      console.error('Failed to set alcohol date:', err);
+    }
+  };
 
   const scrollToCard = (index) => {
     const container = cardsRef.current;
@@ -145,7 +197,6 @@ export default function HeroDashboard() {
         logCount: logs.length
       });
 
-      // Get last 14 entries for the trend chart
       const last14 = allWeights.slice(-14);
       const last7ForDelta = allWeights.slice(-7);
       const weekAgoWeight = last7ForDelta.length > 1 ? last7ForDelta[0].weight : null;
@@ -163,7 +214,7 @@ export default function HeroDashboard() {
 
       const workQ = query(collection(db, 'workoutLogs'), where('userId', '==', currentUser.uid), where('date', '==', today));
       const workSnap = await getDocs(workQ);
-      const workLogs = workSnap.docs.map(d => d.data()).filter(l => l.exerciseName && Array.isArray(l.sets));
+      const workLogs = workSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.exerciseName && Array.isArray(l.sets));
       const totalSets = workLogs.reduce((s, l) => s + l.sets.length, 0);
       const totalVolume = workLogs.reduce((s, l) => s + l.sets.reduce((a, set) => a + Number(set.weight) * Number(set.reps), 0), 0);
       const exerciseNames = [...new Set(workLogs.map(l => l.exerciseName))];
@@ -171,8 +222,33 @@ export default function HeroDashboard() {
         exercises: exerciseNames.length,
         sets: totalSets,
         volume: totalVolume,
-        names: exerciseNames
+        names: exerciseNames,
+        logs: workLogs
       });
+
+      const alcoholFoodsQ = query(collection(db, 'foods'), where('userId', '==', currentUser.uid), where('tags', 'array-contains', 'alcohol'));
+      const alcoholFoodsSnap = await getDocs(alcoholFoodsQ);
+      const alcoholFoodIds = alcoholFoodsSnap.docs.map(doc => doc.id);
+
+      let lastAlcoholDate = profData?.lastAlcoholDate || null;
+
+      if (alcoholFoodIds.length > 0) {
+        const alcLogsQ = query(
+          collection(db, 'logs'),
+          where('userId', '==', currentUser.uid),
+          where('foodId', 'in', alcoholFoodIds.slice(0, 30))
+        );
+        const alcLogsSnap = await getDocs(alcLogsQ);
+        const logDates = alcLogsSnap.docs.map(d => d.data().date);
+        if (logDates.length > 0) {
+          const latestLogDate = logDates.sort().reverse()[0];
+          if (!lastAlcoholDate || latestLogDate > lastAlcoholDate) {
+            lastAlcoholDate = latestLogDate;
+          }
+        }
+      }
+      setAlcoholData({ lastDate: lastAlcoholDate });
+
     } catch (err) {
       console.error('HeroDashboard fetch error:', err);
     }
@@ -183,7 +259,6 @@ export default function HeroDashboard() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Linear regression helper
   const linearRegression = (data) => {
     if (!data || data.length < 2) return null;
     const n = data.length;
@@ -217,7 +292,6 @@ export default function HeroDashboard() {
 
     const minVal = Math.min(...data);
     const maxVal = Math.max(...data);
-    // Add padding to range so points aren't at the very edges
     const valRange = maxVal - minVal || 1;
     const yMin = minVal - valRange * 0.15;
     const yMax = maxVal + valRange * 0.15;
@@ -226,25 +300,19 @@ export default function HeroDashboard() {
     const toX = (i) => padLeft + (i / (data.length - 1)) * plotW;
     const toY = (v) => padTop + plotH - ((v - yMin) / yRange) * plotH;
 
-    // Data points polyline
     const dataPoints = data.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
-
-    // Gradient fill area
     const areaPoints = `${toX(0)},${padTop + plotH} ${dataPoints} ${toX(data.length - 1)},${padTop + plotH}`;
 
-    // Linear regression line
     const reg = linearRegression(data);
     const regY0 = reg.intercept;
     const regY1 = reg.slope * (data.length - 1) + reg.intercept;
 
-    // Y-axis labels (3 labels: min, mid, max)
     const yLabels = [
       { val: minVal, y: toY(minVal) },
       { val: (minVal + maxVal) / 2, y: toY((minVal + maxVal) / 2) },
       { val: maxVal, y: toY(maxVal) },
     ];
 
-    // X-axis date labels (first, middle, last)
     const dateLabels = [];
     if (dates && dates.length > 0) {
       const fmt = (d) => {
@@ -262,8 +330,6 @@ export default function HeroDashboard() {
     const trendGoingDown = reg.slope <= 0;
     const trendColor = trendGoingDown ? '#10b981' : '#ef4444';
     const gradId = 'weightGrad';
-
-    // Per-week rate
     const perDay = reg.slope;
     const perWeek = (perDay * 7).toFixed(2);
 
@@ -276,50 +342,36 @@ export default function HeroDashboard() {
               <stop offset="100%" stopColor={color} stopOpacity="0.02" />
             </linearGradient>
           </defs>
-
-          {/* Horizontal grid lines */}
           {yLabels.map((yl, i) => (
             <line key={i} x1={padLeft} y1={yl.y} x2={chartW - padRight} y2={yl.y}
               stroke="var(--hero-muted)" strokeWidth="0.5" strokeDasharray="4,3" />
           ))}
-
-          {/* Y-axis labels */}
           {yLabels.map((yl, i) => (
             <text key={i} x={padLeft - 4} y={yl.y + 3} textAnchor="end"
               fontSize="7" fill="var(--hero-text)" opacity="0.5" fontFamily="inherit">
               {yl.val.toFixed(1)}
             </text>
           ))}
-
-          {/* X-axis date labels */}
           {dateLabels.map((dl, i) => (
             <text key={i} x={dl.x} y={chartH - 3} textAnchor="middle"
               fontSize="7" fill="var(--hero-text)" opacity="0.45" fontFamily="inherit">
               {dl.label}
             </text>
           ))}
-
-          {/* Gradient fill area under data line */}
           <polygon points={areaPoints} fill={`url(#${gradId})`} />
-
-          {/* Data polyline */}
           <polyline points={dataPoints} fill="none" stroke={color} strokeWidth="1.5"
             strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* Linear trend line */}
           <line x1={toX(0)} y1={toY(regY0)} x2={toX(data.length - 1)} y2={toY(regY1)}
             stroke={trendColor} strokeWidth="1" strokeDasharray="4,3" opacity="0.7" />
-
-          {/* Data point dots */}
           {data.map((v, i) => (
             <circle key={i} cx={toX(i)} cy={toY(v)} r={i === data.length - 1 ? 3 : 1.8}
               fill={i === data.length - 1 ? color : 'var(--hero-bg)'}
               stroke={color} strokeWidth={i === data.length - 1 ? 0 : 1} />
           ))}
         </svg>
-        <div className="hero-weight-trend-label">
+        <div className="widget-subtext" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', paddingRight: '0.25rem', marginTop: '0.4rem' }}>
           <span className="hero-weight-trend-line" style={{ borderColor: trendColor }} />
-          <span style={{ color: trendColor }}>{perWeek > 0 ? '+' : ''}{perWeek} kg/week</span>
+          <span style={{ color: trendColor, fontWeight: 600 }}>{perWeek > 0 ? '+' : ''}{perWeek} kg/week</span>
         </div>
       </div>
     );
@@ -340,24 +392,15 @@ export default function HeroDashboard() {
     );
   };
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   const cardLabels = ['Diet', 'Weight', 'Workout'];
 
   return (
     <div className="hero-dashboard">
       <div className="hero-header">
-        <h1 className="hero-greeting">{greeting()}</h1>
-        <p className="hero-date">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <h1 className="hero-title">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h1>
       </div>
 
       <div className="hero-cards" ref={cardsRef} onScroll={handleScroll}>
-        {/* Diet Card */}
         <div className="hero-card" onClick={() => scrollTo('diet')}>
           <div className="hero-card-header">
             <span className="hero-card-title">Diet</span>
@@ -367,47 +410,90 @@ export default function HeroDashboard() {
               <div className="hero-card-main-row">
                 {dietWidgetOrder.map(id => {
                   const isRing = id === 'ring';
+                  const isAlcohol = id === 'alcohol';
                   return (
                     <div
                       key={id}
                       draggable="true"
-                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id); }}
-                      onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, id); }}
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id, 'diet'); }}
+                      onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, id, 'diet'); }}
                       onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
-                      onDrop={(e) => { e.stopPropagation(); handleDrop(e); }}
+                      onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'diet'); }}
                       onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
-                      className={`hero-subcard ${isRing ? 'ring-widget' : 'diet-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
+                      className={`hero-subcard ${isRing ? 'ring-widget' : isAlcohol ? 'alcohol-widget' : 'diet-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
                     >
                       {isRing ? (
-                        <div className="hero-card-ring">
+                        <div className="hero-card-ring" style={{ position: 'relative' }}>
                           <CircularProgress value={dietData.calories} max={dietData.targetCalories} color="#3b82f6" />
-                          <div className="hero-ring-label">
-                            <span className="hero-ring-value">{dietData.calories}</span>
-                            <span className="hero-ring-unit">kcal</span>
+                          <div className="widget-overlay-center">
+                            <span className="widget-value-lg">{dietData.calories}</span>
+                            <span className="widget-subtext">kcal</span>
                           </div>
+                        </div>
+                      ) : isAlcohol ? (
+                        <div className="alcohol-stats">
+                          <div className="widget-title" style={{ fontSize: '0.85rem', marginBottom: '0.6rem' }}>Alcohol Free</div>
+                          <div className="widget-label" style={{ marginBottom: '0.4rem', opacity: 0.5, fontSize: '0.75rem' }}>since</div>
+                          {alcoholData?.lastDate && !isEditingAlcohol ? (
+                            <>
+                              <div className="widget-value-lg">
+                                {Math.floor((new Date() - new Date(alcoholData.lastDate)) / (1000 * 60 * 60 * 24))}
+                              </div>
+                              <div className="widget-subtext" style={{ marginTop: '0.2rem' }}>days</div>
+                              <button
+                                className="hero-reset-btn"
+                                onClick={(e) => { e.stopPropagation(); setIsEditingAlcohol(true); }}
+                                title="Change start date"
+                              >
+                                ↺
+                              </button>
+                            </>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
+                              <input
+                                type="date"
+                                className="hero-input-mini"
+                                value={alcoholData?.lastDate || ''}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => { handleSetAlcoholDate(e.target.value); setIsEditingAlcohol(false); }}
+                              />
+                              <div className="widget-subtext" style={{ fontSize: '0.65rem' }}>
+                                {alcoholData?.lastDate ? 'Update start date' : 'Set start date'}
+                              </div>
+                              {isEditingAlcohol && (
+                                <button
+                                  className="widget-subtext"
+                                  style={{ background: 'none', border: 'none', color: 'var(--hero-accent)', cursor: 'pointer', opacity: 1 }}
+                                  onClick={(e) => { e.stopPropagation(); setIsEditingAlcohol(false); }}
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <>
-                          <div className="subcard-row">
-                            <div className="subcard-label">
-                              <span className="subcard-dot" style={{ background: '#6CA34D' }}></span>
+                          <div className="widget-row">
+                            <div className="widget-label">
+                              <span className="widget-dot" style={{ background: '#6CA34D' }}></span>
                               Protein
                             </div>
-                            <div className="subcard-value">{dietData.protein}g</div>
+                            <div className="widget-value-md">{dietData.protein}g</div>
                           </div>
-                          <div className="subcard-row">
-                            <div className="subcard-label">
-                              <span className="subcard-dot" style={{ background: '#E47A2E' }}></span>
+                          <div className="widget-row">
+                            <div className="widget-label">
+                              <span className="widget-dot" style={{ background: '#E47A2E' }}></span>
                               Carbs
                             </div>
-                            <div className="subcard-value">{dietData.carbs}g</div>
+                            <div className="widget-value-md">{dietData.carbs}g</div>
                           </div>
-                          <div className="subcard-row">
-                            <div className="subcard-label">
-                              <span className="subcard-dot" style={{ background: '#F3B605' }}></span>
+                          <div className="widget-row">
+                            <div className="widget-label">
+                              <span className="widget-dot" style={{ background: '#F3B605' }}></span>
                               Fat
                             </div>
-                            <div className="subcard-value">{dietData.fat}g</div>
+                            <div className="widget-value-md">{dietData.fat}g</div>
                           </div>
                         </>
                       )}
@@ -433,21 +519,41 @@ export default function HeroDashboard() {
           {weightData ? (
             <div className="hero-card-body">
               <div className="hero-card-main-row">
-                <div>
-                  <div className="hero-weight-number">{weightData.current ?? '—'}<span className="hero-weight-unit"> kg</span></div>
-                  {weightData.weekDelta !== null && (
-                    <div className={`hero-weight-delta ${Number(weightData.weekDelta) <= 0 ? 'positive' : 'negative'}`}>
-                      {Number(weightData.weekDelta) > 0 ? '+' : ''}{weightData.weekDelta} kg this week
+                {weightWidgetOrder.map(id => {
+                  const isStats = id === 'stats';
+                  return (
+                    <div
+                      key={id}
+                      draggable="true"
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id, 'weight'); }}
+                      onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, id, 'weight'); }}
+                      onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
+                      onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'weight'); }}
+                      onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                      className={`hero-subcard ${isStats ? 'weight-stats-widget' : 'weight-chart-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
+                    >
+                      {isStats ? (
+                        <>
+                          <div>
+                            <span className="widget-value-lg">{weightData.current ?? '—'}</span>
+                            <span className="widget-subtext"> kg</span>
+                          </div>
+                          {weightData.weekDelta !== null && (
+                            <div className={`widget-subtext ${Number(weightData.weekDelta) <= 0 ? 'positive' : 'negative'}`} style={{ marginTop: '0.4rem', fontWeight: 600 }}>
+                              {Number(weightData.weekDelta) > 0 ? '+' : ''}{weightData.weekDelta} kg this week
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <WeightTrendChart
+                          data={weightData.trend}
+                          dates={weightData.trendDates}
+                          color={Number(weightData.weekDelta) <= 0 ? '#10b981' : '#3b82f6'}
+                        />
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="hero-weight-inset">
-                  <WeightTrendChart
-                    data={weightData.trend}
-                    dates={weightData.trendDates}
-                    color={Number(weightData.weekDelta) <= 0 ? '#10b981' : '#3b82f6'}
-                  />
-                </div>
+                  );
+                })}
               </div>
               <div className="hero-card-footer">
                 <span>{weightData.todayLogged ? '✓ Logged today' : '○ Not logged today'}</span>
@@ -466,27 +572,51 @@ export default function HeroDashboard() {
           </div>
           {workoutData ? (
             <div className="hero-card-body">
-              <div className="hero-workout-stats">
-                <div className="hero-workout-stat">
-                  <span className="hero-workout-big">{workoutData.exercises}</span>
-                  <span className="hero-workout-label">Exercises</span>
+              {workoutData.logs && workoutData.logs.length > 0 ? (
+                <div className="hero-card-main-row" style={{ overflowX: 'auto', paddingBottom: '1rem' }}>
+                  {[...workoutData.logs].sort((a, b) => {
+                    const idxA = workoutWidgetOrder.indexOf(a.id);
+                    const idxB = workoutWidgetOrder.indexOf(b.id);
+                    if (idxA === -1 && idxB === -1) return 0;
+                    if (idxA === -1) return 1;
+                    if (idxB === -1) return -1;
+                    return idxA - idxB;
+                  }).map(log => {
+                    const vol = log.sets.reduce((acc, set) => acc + Number(set.weight) * Number(set.reps), 0);
+                    return (
+                      <div
+                        key={log.id}
+                        draggable="true"
+                        onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, log.id, 'workout'); }}
+                        onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, log.id, 'workout'); }}
+                        onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
+                        onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'workout'); }}
+                        onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                        className={`hero-subcard workout-widget ${draggingId === log.id ? 'dragging' : ''} ${dragOverId === log.id && draggingId !== log.id ? 'drag-over' : ''}`}
+                      >
+                        <div className="widget-title">{log.exerciseName}</div>
+                        <div className="widget-row">
+                          <div className="widget-label"><span className="widget-dot" style={{ background: '#3b82f6' }}></span>Sets</div>
+                          <div className="widget-value-md">{log.sets.length}</div>
+                        </div>
+                        <div className="widget-row">
+                          <div className="widget-label"><span className="widget-dot" style={{ background: '#10b981' }}></span>Volume</div>
+                          <div className="widget-value-md">{vol > 999 ? `${(vol / 1000).toFixed(1)}k` : vol}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="hero-workout-divider"></div>
-                <div className="hero-workout-stat">
-                  <span className="hero-workout-big">{workoutData.sets}</span>
-                  <span className="hero-workout-label">Sets</span>
+              ) : (
+                <div className="hero-card-loading" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  No workout logged today
                 </div>
-                <div className="hero-workout-divider"></div>
-                <div className="hero-workout-stat">
-                  <span className="hero-workout-big">{workoutData.volume > 999 ? `${(workoutData.volume / 1000).toFixed(1)}k` : workoutData.volume}</span>
-                  <span className="hero-workout-label">Volume (kg)</span>
-                </div>
-              </div>
+              )}
               <div className="hero-card-footer">
                 {workoutData.names.length > 0 ? (
-                  <span>{workoutData.names.join(', ')}</span>
+                  <span>{workoutData.exercises} exercises • {workoutData.sets} sets • {workoutData.volume > 999 ? `${(workoutData.volume / 1000).toFixed(1)}k` : workoutData.volume} kg total</span>
                 ) : (
-                  <span>No workout today</span>
+                  <span>Ready to lift?</span>
                 )}
               </div>
             </div>

@@ -301,17 +301,11 @@ select.form-control {
   margin-right: auto;
 }
 
-.hero-greeting {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 0.25rem 0;
-}
-
-.hero-date {
+.hero-title {
   font-size: 1rem;
-  opacity: 0.5;
+  font-weight: 700;
   margin: 0;
-  font-weight: 400;
+  color: var(--hero-text-strong);
 }
 
 .hero-cards {
@@ -401,69 +395,87 @@ select.form-control {
   flex: 1;
 }
 
-.subcard-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-}
-
-[data-theme='dark'] .subcard-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.subcard-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.subcard-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  opacity: 0.6;
-  font-weight: 500;
-}
-
-.subcard-value {
+/* ========== Standardized Widget Typography ========== */
+.widget-title {
+  font-family: var(--font-family);
+  font-size: 1rem;
   font-weight: 600;
   color: var(--hero-text-strong);
-  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
-.subcard-dot {
+.widget-value-lg {
+  font-family: var(--font-family);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--hero-text-strong);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.widget-value-md {
+  font-family: var(--font-family);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--hero-text-strong);
+  line-height: 1.2;
+  margin-left: auto;
+}
+
+.widget-label {
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.widget-subtext {
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.widget-subtext.positive {
+  color: #10b981;
+  opacity: 1;
+}
+
+.widget-subtext.negative {
+  color: #ef4444;
+  opacity: 1;
+}
+
+/* Widget Layout Helpers */
+.widget-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.widget-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.hero-card-ring {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hero-ring-label {
+.widget-overlay-center {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1;
-}
-
-.hero-ring-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--hero-text-strong);
-}
-
-.hero-ring-unit {
-  font-size: 0.75rem;
-  opacity: 0.5;
-  margin-top: 2px;
+  justify-content: center;
+  line-height: 1.2;
+  inset: 0;
 }
 
 .hero-card-stats {
@@ -514,51 +526,30 @@ select.form-control {
   font-size: 0.875rem;
 }
 
-/* Weight card */
-.hero-weight-number {
-  font-size: 3.5rem;
-  font-weight: 700;
-  color: var(--hero-text-strong);
-}
+/* Weight card specifics (now mostly using standardized widgets) */
 
-.hero-weight-unit {
-  font-size: 1.3rem;
-  font-weight: 400;
-  opacity: 0.5;
-}
-
-.hero-weight-delta {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
-
-.hero-weight-delta.positive {
-  color: #10b981;
-}
-
-.hero-weight-delta.negative {
-  color: #ef4444;
-}
-
-.hero-weight-inset {
-  flex-shrink: 0;
-  background: var(--hero-muted);
-  border: 1px solid var(--hero-border);
-  border-radius: 18px;
-  padding: 1.25rem 1rem 0.5rem;
-  width: 220px;
-}
-
-.hero-weight-trend-label {
+.weight-stats-widget {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 0.4rem;
-  justify-content: flex-end;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding-right: 0.25rem;
-  opacity: 0.85;
+  text-align: center;
+  gap: 0.2rem;
+}
+
+.weight-chart-widget {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.weight-chart-widget .hero-weight-chart {
+  width: 100%;
 }
 
 .hero-weight-trend-line {
@@ -568,7 +559,8 @@ select.form-control {
   vertical-align: middle;
 }
 
-.diet-widget {
+.diet-widget,
+.workout-widget {
   flex: 1;
   min-width: 0;
   gap: 0.6rem;
@@ -581,17 +573,6 @@ select.form-control {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.diet-widget .subcard-row {
-  justify-content: flex-start;
-  gap: 0.8rem;
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.diet-widget .subcard-value {
-  font-size: 0.95rem;
 }
 
 /* Drag-and-drop subcard states */
@@ -612,6 +593,50 @@ select.form-control {
   outline: 2px dashed var(--hero-accent, #3b82f6);
   outline-offset: -2px;
   background: color-mix(in srgb, var(--hero-muted) 80%, var(--hero-accent, #3b82f6) 20%);
+}
+
+.alcohol-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  width: 100%;
+}
+
+.hero-input-mini {
+  width: 100%;
+  padding: 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--hero-border);
+  background: var(--hero-muted);
+  color: var(--hero-text-strong);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.hero-reset-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: var(--hero-muted);
+  border: 1px solid var(--hero-border);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--hero-text-strong);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.hero-reset-btn:hover {
+  opacity: 1;
 }
 
 /* Workout card */
