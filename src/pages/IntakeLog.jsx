@@ -225,10 +225,10 @@ export default function IntakeLog() {
     setDate(getLocalDateString(d));
   };
 
-  const dailyCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
-  const dailyProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
-  const dailyCarbs = logs.reduce((sum, log) => sum + (log.totalCarbs || 0), 0);
-  const dailyFat = logs.reduce((sum, log) => sum + (log.totalFat || 0), 0);
+  const dailyCalories = logs.reduce((sum, log) => sum + (Number(log.totalCalories) || 0), 0);
+  const dailyProtein = logs.reduce((sum, log) => sum + (Number(log.totalProtein) || 0), 0);
+  const dailyCarbs = logs.reduce((sum, log) => sum + (Number(log.totalCarbs) || 0), 0);
+  const dailyFat = logs.reduce((sum, log) => sum + (Number(log.totalFat) || 0), 0);
 
   // Calculate weekly data
   const getLast7Days = () => {
@@ -266,8 +266,8 @@ export default function IntakeLog() {
 
   const weeklyData = getLast7Days().map(day => {
     const dayLogs = weeklyLogs.filter(log => log.date === day.date);
-    const dayCalories = dayLogs.reduce((sum, log) => sum + log.totalCalories, 0);
-    const dayProtein = dayLogs.reduce((sum, log) => sum + log.totalProtein, 0);
+    const dayCalories = dayLogs.reduce((sum, log) => sum + (Number(log.totalCalories) || 0), 0);
+    const dayProtein = dayLogs.reduce((sum, log) => sum + (Number(log.totalProtein) || 0), 0);
 
     const dayWeight = weeklyWeights.find(w => w.date === day.date)?.weight || 0;
     const targetProtein = dayWeight ? Number((dayWeight * 2.2).toFixed(1)) : 0;

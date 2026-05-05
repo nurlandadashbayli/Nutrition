@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 const getLocalDateString = (d = new Date()) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -26,10 +27,11 @@ export default function HeroDashboard() {
       if (saved) {
         const order = JSON.parse(saved);
         if (!order.includes('alcohol')) order.push('alcohol');
+        if (!order.includes('scanner')) order.push('scanner');
         return order;
       }
-      return ['ring', 'macros', 'alcohol'];
-    } catch { return ['ring', 'macros', 'alcohol']; }
+      return ['ring', 'macros', 'alcohol', 'scanner'];
+    } catch { return ['ring', 'macros', 'alcohol', 'scanner']; }
   });
   const [weightWidgetOrder, setWeightWidgetOrder] = useState(() => {
     try {
@@ -143,6 +145,58 @@ export default function HeroDashboard() {
     }
   };
 
+  const handleBarcodeScanned = async (barcode) => {
+    try {
+      setExpandedWidget({ type: 'scanner_loading' });
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+      
+      if (data.status === 1) {
+        const product = data.product;
+        const nutriments = product.nutriments;
+        const fetchedData = {
+          name: product.product_name || 'Unknown Food',
+          servingSize: product.serving_size || '100g',
+          calories: Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0),
+          protein: (nutriments.proteins_100g || nutriments.proteins || 0),
+          fat: (nutriments.fat_100g || nutriments.fat || 0),
+          carbs: (nutriments.carbohydrates_100g || nutriments.carbohydrates || 0)
+        };
+        setExpandedWidget({ type: 'scanner_result', data: fetchedData });
+      } else {
+        alert('Product not found.');
+        setExpandedWidget(null);
+      }
+    } catch (err) {
+      console.error('Barcode fetch error:', err);
+      alert('Failed to fetch product data.');
+      setExpandedWidget(null);
+    }
+  };
+
+  const handleQuickLog = async (foodData, weight) => {
+    if (!currentUser) return;
+    try {
+      const ratio = weight / 100;
+      await addDoc(collection(db, 'logs'), {
+        userId: currentUser.uid,
+        date: today,
+        foodName: foodData.name,
+        servingSize: foodData.servingSize,
+        weight: Number(weight),
+        totalCalories: Math.round(foodData.calories * ratio),
+        totalProtein: Number((foodData.protein * ratio).toFixed(1)),
+        totalCarbs: Number((foodData.carbs * ratio).toFixed(1)),
+        totalFat: Number((foodData.fat * ratio).toFixed(1)),
+        createdAt: new Date().toISOString()
+      });
+      fetchAll(); // Refresh dashboard
+      setExpandedWidget(null);
+    } catch (err) {
+      console.error('Quick log error:', err);
+    }
+  };
+
   const scrollToCard = (index) => {
     const container = cardsRef.current;
     if (!container || !container.firstElementChild) return;
@@ -160,14 +214,17 @@ export default function HeroDashboard() {
       const logsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid), where('date', '==', today));
       const logsSnap = await getDocs(logsQ);
       const logs = logsSnap.docs.map(d => d.data());
-      const totalCal = logs.reduce((s, l) => s + (l.totalCalories || 0), 0);
-      const totalProtein = logs.reduce((s, l) => s + (l.totalProtein || 0), 0);
-      const totalCarbs = logs.reduce((s, l) => s + (l.totalCarbs || 0), 0);
-      const totalFat = logs.reduce((s, l) => s + (l.totalFat || 0), 0);
+      const totalCal = logs.reduce((s, l) => s + (Number(l.totalCalories) || 0), 0);
+      const totalProtein = logs.reduce((s, l) => s + (Number(l.totalProtein) || 0), 0);
+      const totalCarbs = logs.reduce((s, l) => s + (Number(l.totalCarbs) || 0), 0);
+      const totalFat = logs.reduce((s, l) => s + (Number(l.totalFat) || 0), 0);
 
       const weightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
       const weightsSnap = await getDocs(weightsQ);
-      const allWeights = weightsSnap.docs.map(d => d.data());
+      const allWeights = weightsSnap.docs.map(d => {
+        const data = d.data();
+        return { ...data, weight: Number(data.weight) || 0 };
+      });
       allWeights.sort((a, b) => a.date.localeCompare(b.date));
       const latestWeight = allWeights.length > 0 ? allWeights[allWeights.length - 1] : null;
       const todayWeight = allWeights.find(w => w.date === today);
@@ -201,9 +258,9 @@ export default function HeroDashboard() {
 
       const last14 = allWeights.slice(-14);
       const last7ForDelta = allWeights.slice(-7);
-      const weekAgoWeight = last7ForDelta.length > 1 ? last7ForDelta[0].weight : null;
-      const currentWeight = latestWeight ? latestWeight.weight : null;
-      const weekDelta = weekAgoWeight && currentWeight ? (currentWeight - weekAgoWeight).toFixed(1) : null;
+      const weekAgoWeight = last7ForDelta.length > 1 ? Number(last7ForDelta[0].weight) : null;
+      const currentWeight = latestWeight ? Number(latestWeight.weight) : null;
+      const weekDelta = weekAgoWeight && currentWeight ? Number((currentWeight - weekAgoWeight).toFixed(1)) : null;
       setWeightData({
         current: currentWeight,
         todayLogged: !!todayWeight,
@@ -379,17 +436,47 @@ export default function HeroDashboard() {
     );
   };
 
+  useEffect(() => {
+    let scanner = null;
+    let timer = null;
+    if (expandedWidget?.type === 'scanner') {
+      timer = setTimeout(() => {
+        const element = document.getElementById('reader-hero');
+        if (element) {
+          scanner = new Html5QrcodeScanner('reader-hero', {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            rememberLastUsedCamera: true
+          }, false);
+
+          scanner.render((decodedText) => {
+            handleBarcodeScanned(decodedText);
+            scanner.clear().catch(err => console.error("Failed to clear scanner", err));
+          }, (error) => {
+            // silent error
+          });
+        }
+      }, 500); 
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (scanner) {
+        scanner.clear().catch(err => console.error("Cleanup error", err));
+      }
+    };
+  }, [expandedWidget?.type]);
+
   const CircularProgress = ({ value, max, color = '#3b82f6', strokeWidth = 8 }) => {
     const size = 100; // Base size for viewBox
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
-    const pct = Math.min(value / max, 1);
+    const pct = isNaN(value / max) ? 0 : Math.min(value / max, 1);
     const offset = circumference - pct * circumference;
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', maxWidth: '120px' }}>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--hero-muted)" strokeWidth={strokeWidth} />
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth}
-          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeDasharray={circumference} strokeDashoffset={isNaN(offset) ? circumference : offset}
           strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
       </svg>
     );
@@ -486,6 +573,63 @@ export default function HeroDashboard() {
                 style={{ width: '100%', padding: '1rem', borderRadius: '12px' }}
               >
                 Reset Streak (Had a drink)
+              </button>
+            </div>
+          );
+        case 'scanner':
+          return (
+            <div className="expanded-view-content" style={{ textAlign: 'center' }}>
+              <div id="reader-hero" style={{ width: '100%', borderRadius: '16px', overflow: 'hidden' }}></div>
+              <p style={{ marginTop: '1rem', opacity: 0.6 }}>Align barcode within the frame</p>
+            </div>
+          );
+        case 'scanner_loading':
+          return (
+            <div className="expanded-view-content" style={{ textAlign: 'center', padding: '3rem 0' }}>
+              <div className="loading-spinner"></div>
+              <p style={{ marginTop: '1rem' }}>Fetching product data...</p>
+            </div>
+          );
+        case 'scanner_result':
+          const food = expandedWidget.data;
+          return (
+            <div className="expanded-view-content">
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{food.name}</div>
+                <div style={{ opacity: 0.5 }}>{food.servingSize} base</div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                <div className="expanded-log-item" style={{ flexDirection: 'column' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{food.calories}</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>kcal / 100g</div>
+                </div>
+                <div className="expanded-log-item" style={{ flexDirection: 'column' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{food.protein}g</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Protein / 100g</div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '2rem' }}>
+                <label className="form-label">Weight Consumed (g)</label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  id="quick-log-weight"
+                  defaultValue="100"
+                  style={{ fontSize: '1.5rem', height: '60px', textAlign: 'center' }}
+                />
+              </div>
+
+              <button 
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '1rem', borderRadius: '12px' }}
+                onClick={() => {
+                  const weight = document.getElementById('quick-log-weight').value;
+                  handleQuickLog(food, weight);
+                }}
+              >
+                Log to Diet
               </button>
             </div>
           );
@@ -642,6 +786,12 @@ export default function HeroDashboard() {
                               <div className="widget-subtext" style={{ fontSize: '0.65rem' }}>No streak set</div>
                             </div>
                           )}
+                        </div>
+                      ) : id === 'scanner' ? (
+                        <div className="scanner-widget-content" style={{ textAlign: 'center', width: '100%' }}>
+                          <div style={{ fontSize: '1.8rem', marginBottom: '0.4rem' }}>📷</div>
+                          <div className="widget-title" style={{ fontSize: '0.85rem' }}>Scan Food</div>
+                          <div className="widget-subtext" style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '0.25rem' }}>Quick Log</div>
                         </div>
                       ) : (
                         <>

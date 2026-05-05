@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import CollapsibleCard from '../components/CollapsibleCard';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 export default function FoodManagement() {
   const [foods, setFoods] = useState([]);
@@ -16,6 +17,8 @@ export default function FoodManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('');
   
   const { currentUser } = useAuth();
 
@@ -24,6 +27,59 @@ export default function FoodManagement() {
       fetchFoods();
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    let scanner = null;
+    if (isScanning) {
+      scanner = new Html5QrcodeScanner('reader', {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true
+      }, false);
+
+      scanner.render((decodedText) => {
+        handleBarcodeScanned(decodedText);
+        scanner.clear().catch(err => console.error("Failed to clear scanner", err));
+        setIsScanning(false);
+      }, (error) => {
+        // console.warn(error);
+      });
+    }
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(err => console.error("Cleanup error", err));
+      }
+    };
+  }, [isScanning]);
+
+  async function handleBarcodeScanned(barcode) {
+    try {
+      setScanStatus('Searching for product...');
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+      
+      if (data.status === 1) {
+        const product = data.product;
+        setName(product.product_name || '');
+        setServingSize(product.serving_size || '100g');
+        
+        // Open Food Facts nutriments are usually per 100g
+        const nutriments = product.nutriments;
+        setCalories(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || '');
+        setProtein(nutriments.proteins_100g || nutriments.proteins || '');
+        setFat(nutriments.fat_100g || nutriments.fat || '');
+        setCarbs(nutriments.carbohydrates_100g || nutriments.carbohydrates || '');
+        setScanStatus('');
+      } else {
+        setError('Product not found in Open Food Facts database.');
+        setScanStatus('');
+      }
+    } catch (err) {
+      console.error('Barcode fetch error:', err);
+      setError('Failed to fetch product data.');
+      setScanStatus('');
+    }
+  }
 
   async function fetchFoods() {
     try {
@@ -122,9 +178,20 @@ export default function FoodManagement() {
         {error && <div className="error-msg">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Food Name (e.g., Quark)</label>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Food Name (e.g., Quark)
+              <button 
+                type="button" 
+                onClick={() => setIsScanning(true)} 
+                className="btn btn-outline"
+                style={{ padding: '4px 8px', height: 'auto', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}
+              >
+                <span role="img" aria-label="camera">📷</span> Scan Barcode
+              </button>
+            </label>
             <input type="text" className="form-control" value={name} onChange={e => setName(e.target.value)} required />
           </div>
+          {scanStatus && <div style={{ fontSize: '0.8rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>{scanStatus}</div>}
           <div className="form-group">
             <label className="form-label">Serving Size (e.g., 250g, 1 cup)</label>
             <input type="text" className="form-control" value={servingSize} onChange={e => setServingSize(e.target.value)} required />
@@ -221,6 +288,21 @@ export default function FoodManagement() {
           </table>
         )}
       </CollapsibleCard>
+
+      {isScanning && (
+        <div className="scanner-overlay" onClick={() => setIsScanning(false)}>
+          <div className="scanner-container" onClick={e => e.stopPropagation()}>
+            <div className="header-flex" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>Scan Barcode</h3>
+              <button onClick={() => setIsScanning(false)} className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }}>×</button>
+            </div>
+            <div id="reader" style={{ width: '100%' }}></div>
+            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '1rem', textAlign: 'center' }}>
+              Point the camera at the product's barcode
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
