@@ -1547,3 +1547,100 @@ input[type="number"] {
     padding: 1rem !important;
   }
 }
+/* Expanded Widget Styles */
+.expanded-widget-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1.5rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.expanded-widget-card {
+  background: var(--hero-bg);
+  width: 100%;
+  max-width: 500px;
+  border-radius: 32px;
+  border: 1px solid var(--hero-border);
+  padding: 2.5rem;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--hero-text);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.expanded-widget-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: var(--hero-muted);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--hero-text);
+  font-size: 1.2rem;
+  z-index: 10;
+}
+
+.expanded-widget-header {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: var(--hero-text-strong);
+}
+
+.expanded-view-content {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 0.5rem;
+}
+
+.expanded-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.expanded-log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--hero-muted);
+  border-radius: 16px;
+  border: 1px solid var(--hero-border);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .expanded-widget-card {
+    padding: 1.5rem;
+    border-radius: 24px;
+  }
+}

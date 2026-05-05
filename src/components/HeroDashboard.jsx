@@ -16,6 +16,7 @@ export default function HeroDashboard() {
   const [alcoholData, setAlcoholData] = useState(null);
   const [isEditingAlcohol, setIsEditingAlcohol] = useState(false);
   const [activeCard, setActiveCard] = useState(0);
+  const [expandedWidget, setExpandedWidget] = useState(null); // { type: 'calories' | 'macros' | 'alcohol', data: any }
   const cardsRef = useRef(null);
 
   // Drag-and-drop state
@@ -194,7 +195,8 @@ export default function HeroDashboard() {
         targetProtein,
         carbs: Math.round(totalCarbs),
         fat: Math.round(totalFat),
-        logCount: logs.length
+        logCount: logs.length,
+        logs: logs
       });
 
       const last14 = allWeights.slice(-14);
@@ -393,6 +395,198 @@ export default function HeroDashboard() {
     );
   };
 
+  const ExpandedWidgetOverlay = ({ widget, onClose }) => {
+    if (!widget) return null;
+
+    const renderContent = () => {
+      switch (widget.type) {
+        case 'ring':
+          return (
+            <div className="expanded-view-content">
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                <div style={{ width: '180px', height: '180px', position: 'relative' }}>
+                  <CircularProgress value={dietData.calories} max={dietData.targetCalories} />
+                  <div className="absolute-center" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{dietData.calories}</div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>kcal</div>
+                  </div>
+                </div>
+              </div>
+              <h3 style={{ marginBottom: '1rem' }}>Today's Entries</h3>
+              <div className="expanded-logs-list">
+                {dietData.logs && dietData.logs.length > 0 ? (
+                  dietData.logs.map((log, i) => (
+                    <div key={i} className="expanded-log-item">
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '600' }}>{log.foodName}</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{log.servingSize}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: '600' }}>{log.totalCalories} kcal</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>
+                          P:{log.totalProtein} C:{log.totalCarbs} F:{log.totalFat}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ opacity: 0.5, textAlign: 'center' }}>No entries logged yet.</p>
+                )}
+              </div>
+            </div>
+          );
+        case 'macros':
+          const macros = [
+            { label: 'Protein', val: dietData.protein, target: dietData.targetProtein, color: '#6CA34D' },
+            { label: 'Carbs', val: dietData.carbs, target: 250, color: '#E67E22' },
+            { label: 'Fat', val: dietData.fat, target: 80, color: '#F1C40F' }
+          ];
+          return (
+            <div className="expanded-view-content">
+              <h3 style={{ marginBottom: '2rem' }}>Macro Breakdown</h3>
+              {macros.map(m => (
+                <div key={m.label} style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: '600' }}>{m.label}</span>
+                    <span style={{ opacity: 0.6 }}>{m.val}g / {m.target}g</span>
+                  </div>
+                  <div style={{ height: '12px', background: 'var(--hero-muted)', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ 
+                      height: '100%', 
+                      background: m.color, 
+                      width: `${Math.min((m.val / m.target) * 100, 100)}%`,
+                      transition: 'width 1s ease-out'
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        case 'alcohol':
+          const alcoholFreeDays = alcoholData.lastDate 
+            ? Math.floor((new Date() - new Date(alcoholData.lastDate)) / (1000 * 60 * 60 * 24))
+            : 0;
+          return (
+            <div className="expanded-view-content" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🥤</div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Alcohol Free Streak</h3>
+              <div style={{ fontSize: '4rem', fontWeight: 'bold', color: 'var(--primary-color)', margin: '1rem 0' }}>
+                {alcoholFreeDays}
+              </div>
+              <p style={{ opacity: 0.6, marginBottom: '3rem' }}>Keep it up! Consistency is key.</p>
+              
+              <button 
+                className="btn btn-primary"
+                onClick={() => {
+                  if (window.confirm('Reset streak to today?')) {
+                    handleSetAlcoholDate(today);
+                    onClose();
+                  }
+                }}
+                style={{ width: '100%', padding: '1rem', borderRadius: '12px' }}
+              >
+                Reset Streak (Had a drink)
+              </button>
+            </div>
+          );
+        case 'stats':
+          return (
+            <div className="expanded-view-content">
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ fontSize: '3rem', fontWeight: 'bold' }}>{weightData.current} <span style={{ fontSize: '1rem', opacity: 0.5 }}>kg</span></div>
+                <div style={{ color: weightData.weekDelta > 0 ? 'var(--error-color)' : 'var(--success-color)', fontWeight: '600' }}>
+                  {weightData.weekDelta > 0 ? '+' : ''}{weightData.weekDelta} kg since last week
+                </div>
+              </div>
+              <h3 style={{ marginBottom: '1rem' }}>Recent History</h3>
+              <div className="expanded-logs-list">
+                {weightData.trend && weightData.trend.length > 0 ? (
+                  weightData.trend.slice().reverse().map((w, i) => (
+                    <div key={i} className="expanded-log-item">
+                      <div style={{ fontWeight: '600' }}>{new Date(weightData.trendDates[weightData.trendDates.length - 1 - i]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+                      <div style={{ fontWeight: '600' }}>{w} kg</div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ opacity: 0.5, textAlign: 'center' }}>No weight entries yet.</p>
+                )}
+              </div>
+            </div>
+          );
+        case 'chart':
+          return (
+            <div className="expanded-view-content">
+              <h3 style={{ marginBottom: '2rem' }}>Weight Trend Analysis</h3>
+              <div style={{ background: 'var(--hero-muted)', padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--hero-border)' }}>
+                <WeightTrendChart data={weightData.trend} dates={weightData.trendDates} />
+              </div>
+              <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="expanded-log-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.5 }}>Total Entries</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{weightData.totalEntries}</div>
+                </div>
+                <div className="expanded-log-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.5 }}>Last Logged</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{weightData.latestDate ? new Date(weightData.latestDate).toLocaleDateString() : 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+          );
+        case 'workout':
+          return (
+            <div className="expanded-view-content">
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ flex: 1, textAlign: 'center', background: 'var(--hero-muted)', padding: '1rem', borderRadius: '16px' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{workoutData.sets}</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Sets</div>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center', background: 'var(--hero-muted)', padding: '1rem', borderRadius: '16px' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{workoutData.volume > 999 ? `${(workoutData.volume / 1000).toFixed(1)}k` : workoutData.volume}</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Volume (kg)</div>
+                </div>
+              </div>
+              <h3 style={{ marginBottom: '1rem' }}>Exercise Breakdown</h3>
+              <div className="expanded-logs-list">
+                {workoutData.logs && workoutData.logs.length > 0 ? (
+                  workoutData.logs.map((log, i) => (
+                    <div key={i} className="expanded-log-item" style={{ display: 'block' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{log.exerciseName}</div>
+                        <div style={{ opacity: 0.6 }}>{log.sets.length} sets</div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {log.sets.map((s, si) => (
+                          <span key={si} style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--hero-border)' }}>
+                            {s.weight}kg × {s.reps}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ opacity: 0.5, textAlign: 'center' }}>No workout logged yet today.</p>
+                )}
+              </div>
+            </div>
+          );
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <div className="expanded-widget-overlay" onClick={onClose}>
+        <div className="expanded-widget-card" onClick={e => e.stopPropagation()}>
+          <button className="expanded-widget-close" onClick={onClose}>✕</button>
+          <div className="expanded-widget-header">
+            {widget.type.charAt(0).toUpperCase() + widget.type.slice(1)} Details
+          </div>
+          {renderContent()}
+        </div>
+      </div>
+    );
+  };
+
   const cardLabels = ['Diet', 'Weight', 'Workout'];
 
   return (
@@ -421,6 +615,7 @@ export default function HeroDashboard() {
                       onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
                       onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'diet'); }}
                       onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                      onClick={(e) => { e.stopPropagation(); setExpandedWidget({ type: id }); }}
                       className={`hero-subcard ${isRing ? 'ring-widget' : isAlcohol ? 'alcohol-widget' : 'diet-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
                     >
                       {isRing ? (
@@ -435,41 +630,16 @@ export default function HeroDashboard() {
                         <div className="alcohol-stats">
                           <div className="widget-title" style={{ fontSize: '0.85rem', marginBottom: '0.6rem' }}>Alcohol Free</div>
                           <div className="widget-label" style={{ marginBottom: '0.4rem', opacity: 0.5, fontSize: '0.75rem' }}>since</div>
-                          {alcoholData?.lastDate && !isEditingAlcohol ? (
+                          {alcoholData?.lastDate ? (
                             <>
                               <div className="widget-value-lg">
                                 {Math.floor((new Date() - new Date(alcoholData.lastDate)) / (1000 * 60 * 60 * 24))}
                               </div>
                               <div className="widget-subtext" style={{ marginTop: '0.2rem' }}>days</div>
-                              <button
-                                className="hero-reset-btn"
-                                onClick={(e) => { e.stopPropagation(); setIsEditingAlcohol(true); }}
-                                title="Change start date"
-                              >
-                                ↺
-                              </button>
                             </>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
-                              <input
-                                type="date"
-                                className="hero-input-mini"
-                                value={alcoholData?.lastDate || ''}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => { handleSetAlcoholDate(e.target.value); setIsEditingAlcohol(false); }}
-                              />
-                              <div className="widget-subtext" style={{ fontSize: '0.65rem' }}>
-                                {alcoholData?.lastDate ? 'Update start date' : 'Set start date'}
-                              </div>
-                              {isEditingAlcohol && (
-                                <button
-                                  className="widget-subtext"
-                                  style={{ background: 'none', border: 'none', color: 'var(--hero-accent)', cursor: 'pointer', opacity: 1 }}
-                                  onClick={(e) => { e.stopPropagation(); setIsEditingAlcohol(false); }}
-                                >
-                                  Cancel
-                                </button>
-                              )}
+                              <div className="widget-subtext" style={{ fontSize: '0.65rem' }}>No streak set</div>
                             </div>
                           )}
                         </div>
@@ -531,6 +701,7 @@ export default function HeroDashboard() {
                       onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
                       onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'weight'); }}
                       onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                      onClick={(e) => { e.stopPropagation(); setExpandedWidget({ type: id }); }}
                       className={`hero-subcard ${isStats ? 'weight-stats-widget' : 'weight-chart-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
                     >
                       {isStats ? (
@@ -593,6 +764,7 @@ export default function HeroDashboard() {
                         onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
                         onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'workout'); }}
                         onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                        onClick={(e) => { e.stopPropagation(); setExpandedWidget({ type: 'workout' }); }}
                         className={`hero-subcard workout-widget ${draggingId === log.id ? 'dragging' : ''} ${dragOverId === log.id && draggingId !== log.id ? 'drag-over' : ''}`}
                       >
                         <div className="widget-title">{log.exerciseName}</div>
@@ -632,6 +804,11 @@ export default function HeroDashboard() {
           <button key={label} className={`hero-dot ${activeCard === i ? 'active' : ''}`} onClick={() => scrollToCard(i)} aria-label={label} />
         ))}
       </div>
+
+      <ExpandedWidgetOverlay 
+        widget={expandedWidget} 
+        onClose={() => setExpandedWidget(null)} 
+      />
     </div>
   );
 }
