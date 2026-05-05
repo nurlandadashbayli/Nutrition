@@ -416,22 +416,28 @@ export default function Recipes() {
           </button>
 
           <div className="recipe-summary-floating">
-            <div className="flex-group" style={{ justifyContent: 'space-around', textAlign: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              textAlign: 'center', 
+              marginBottom: '1.5rem',
+              gap: '0.5rem'
+            }}>
               <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{Math.round(totals.calories)}</div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>kcal</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{Math.round(totals.calories)}</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>kcal</div>
               </div>
               <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{Math.round(totals.protein * 10) / 10}g</div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>P</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{Math.round(totals.protein * 10) / 10}g</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>P</div>
               </div>
               <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{Math.round(totals.carbs * 10) / 10}g</div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>C</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{Math.round(totals.carbs * 10) / 10}g</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>C</div>
               </div>
               <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{Math.round(totals.fat * 10) / 10}g</div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>F</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{Math.round(totals.fat * 10) / 10}g</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>F</div>
               </div>
             </div>
             

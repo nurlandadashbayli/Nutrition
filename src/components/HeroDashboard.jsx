@@ -377,13 +377,14 @@ export default function HeroDashboard() {
     );
   };
 
-  const CircularProgress = ({ value, max, color = '#3b82f6', size = 110, strokeWidth = 7 }) => {
+  const CircularProgress = ({ value, max, color = '#3b82f6', strokeWidth = 8 }) => {
+    const size = 100; // Base size for viewBox
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const pct = Math.min(value / max, 1);
     const offset = circumference - pct * circumference;
     return (
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', maxWidth: '120px' }}>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--hero-muted)" strokeWidth={strokeWidth} />
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth}
           strokeDasharray={circumference} strokeDashoffset={offset}

@@ -407,7 +407,7 @@ export default function IntakeLog() {
         </div>
 
         {/* Macros Card */}
-        <div className="card" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', boxShadow: 'var(--shadow-color)' }}>
+        <div className="card macros-grid">
           {/* Protein */}
           <div style={{ flex: 1, paddingRight: '1rem' }}>
             <div style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.9, marginBottom: '0.5rem' }}>Protein</div>

@@ -107,7 +107,7 @@ export default function WeightManagement() {
   const range = maxWeight - minWeight;
 
   return (
-    <div className="container">
+    <div>
       <div className="card">
         <h2>{editingId ? 'Edit Weight' : 'Log Daily Weight'}</h2>
         {error && <div className="error-msg">{error}</div>}

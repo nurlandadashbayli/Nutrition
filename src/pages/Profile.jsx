@@ -124,10 +124,10 @@ export default function Profile() {
 
   const tdee = calculateTDEE();
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
+  if (loading) return <div><p>Loading...</p></div>;
 
   return (
-    <div className="container" style={{ margin: '0 auto', paddingBottom: '3rem' }}>
+    <div style={{ paddingBottom: '3rem' }}>
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>Profile</h1>
         <p style={{ opacity: 0.6, margin: 0 }}>Configure your details for accurate targets</p>
@@ -148,20 +148,20 @@ export default function Profile() {
       )}
 
       {/* Stats Summary Widget */}
-      <div className="card" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', boxShadow: 'var(--shadow-color)' }}>
-        <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{latestWeight || '-'}</div>
-          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>Current (kg)</div>
+      <div className="summary-card" style={{ marginBottom: '2rem' }}>
+        <div className="summary-item">
+          <div className="summary-value">{latestWeight || '-'}</div>
+          <div className="summary-label">Current (kg)</div>
         </div>
-        <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border-color)' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{tdee || '-'}</div>
-          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>TDEE (kcal)</div>
+        <div className="summary-item">
+          <div className="summary-value">{tdee || '-'}</div>
+          <div className="summary-label">TDEE (kcal)</div>
         </div>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+        <div className="summary-item">
+          <div className="summary-value" style={{ color: 'var(--primary-color)' }}>
             {tdee ? Math.round(tdee - (profile.weeklyLossGoal * 1100)) : '-'}
           </div>
-          <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '0.25rem' }}>Target (kcal)</div>
+          <div className="summary-label">Target (kcal)</div>
         </div>
       </div>
 

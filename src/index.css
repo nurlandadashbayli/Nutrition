@@ -222,7 +222,29 @@ select.form-control {
   box-shadow: 0 4px 16px var(--shadow-color);
   width: 100%;
   max-width: 768px;
-  /* 800px container - 32px padding */
+}
+
+@media (max-width: 768px) {
+  .pill-nav {
+    max-width: 95vw;
+    padding: 6px;
+  }
+  
+  .nav-link {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pill-nav {
+    border-radius: 12px;
+  }
+  
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
 }
 
 [data-theme='dark'] .pill-nav {
@@ -268,10 +290,16 @@ select.form-control {
 /* Continuous Page Styles */
 .continuous-page {
   padding-top: 80px;
-  /* Space for the floating navbar */
   display: flex;
   flex-direction: column;
   gap: 40px;
+}
+
+@media (max-width: 640px) {
+  .continuous-page {
+    padding-top: 70px;
+    gap: 24px;
+  }
 }
 
 .page-section {
@@ -301,6 +329,13 @@ select.form-control {
   margin-right: auto;
 }
 
+@media (max-width: 640px) {
+  .hero-header {
+    padding: 0 1.5rem;
+    margin-bottom: 1rem;
+  }
+}
+
 .hero-title {
   font-size: 1rem;
   font-weight: 700;
@@ -317,6 +352,14 @@ select.form-control {
   padding-bottom: 1rem;
   padding-left: 2rem;
   padding-right: 2rem;
+}
+
+@media (max-width: 640px) {
+  .hero-cards {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    gap: 1rem;
+  }
 }
 
 .hero-cards::-webkit-scrollbar {
@@ -338,6 +381,23 @@ select.form-control {
   scroll-snap-align: center;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .hero-card {
+    padding: 2rem;
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-card {
+    padding: 1.5rem;
+    min-width: calc(100vw - 2.5rem);
+    max-width: calc(100vw - 2.5rem);
+    min-height: 340px;
+    border-radius: 20px;
+  }
 }
 
 .hero-card:hover {
@@ -380,6 +440,12 @@ select.form-control {
   flex: 1;
 }
 
+@media (max-width: 480px) {
+  .hero-card-main-row {
+    gap: 0.75rem;
+  }
+}
+
 /* Subcard Widget Style */
 .hero-subcard {
   background: var(--hero-muted);
@@ -393,6 +459,20 @@ select.form-control {
   gap: 0.75rem;
   max-width: 180px;
   flex: 1;
+}
+
+@media (max-width: 640px) {
+  .hero-subcard {
+    padding: 1rem;
+    border-radius: 16px;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero-subcard {
+    padding: 0.75rem;
+  }
 }
 
 /* ========== Standardized Widget Typography ========== */
@@ -417,6 +497,12 @@ select.form-control {
   letter-spacing: -0.02em;
 }
 
+@media (max-width: 480px) {
+  .widget-value-lg {
+    font-size: 1.4rem;
+  }
+}
+
 .widget-value-md {
   font-family: var(--font-family);
   font-size: 1.1rem;
@@ -424,6 +510,12 @@ select.form-control {
   color: var(--hero-text-strong);
   line-height: 1.2;
   margin-left: auto;
+}
+
+@media (max-width: 480px) {
+  .widget-value-md {
+    font-size: 0.95rem;
+  }
 }
 
 .widget-label {
@@ -660,6 +752,12 @@ select.form-control {
   color: var(--hero-text-strong);
 }
 
+@media (max-width: 480px) {
+  .hero-workout-big {
+    font-size: 2.2rem;
+  }
+}
+
 .hero-workout-label {
   font-size: 0.9rem;
   opacity: 0.5;
@@ -860,6 +958,13 @@ td {
   transition: border-color var(--transition-speed) ease;
 }
 
+@media (max-width: 640px) {
+  th, td {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
 th {
   font-weight: 500;
   color: var(--text-color);
@@ -908,6 +1013,23 @@ th {
 
 .food-picker>div.action {
   flex: 0 0 auto;
+}
+
+/* Macros Card Layout */
+.macros-grid {
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 540px) {
+  .macros-grid {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .macros-grid > div {
+    padding-right: 0 !important;
+  }
 }
 
 /* Weekly Chart */
@@ -1087,6 +1209,11 @@ th {
 
   h2 {
     font-size: 1.25rem;
+  }
+  
+  .card {
+    padding: 1.25rem;
+    border-radius: 12px;
   }
 }
 
