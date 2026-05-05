@@ -244,7 +244,7 @@ export default function Recipes() {
               className="form-control" 
               value={date} 
               onChange={(e) => setDate(e.target.value)}
-              style={{ width: 'auto', height: '40px', padding: '0 0.75rem' }}
+              style={{ width: 'auto', height: '48px', padding: '0 0.75rem' }}
             />
           </div>
           <div className="recipe-grid">

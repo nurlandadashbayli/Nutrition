@@ -304,7 +304,7 @@ export default function IntakeLog() {
             <button
               onClick={() => changeDate(-1)}
               className="btn btn-outline"
-              style={{ width: '40px', height: '40px', padding: 0 }}
+              style={{ width: '40px', height: '48px', padding: 0 }}
               title="Previous Day"
             >
               ←
@@ -312,14 +312,14 @@ export default function IntakeLog() {
             <input
               type="date"
               className="form-control"
-              style={{ width: 'auto' }}
+              style={{ width: 'auto', flex: 1 }}
               value={date}
               onChange={e => setDate(e.target.value)}
             />
             <button
               onClick={() => changeDate(1)}
               className="btn btn-outline"
-              style={{ width: '40px', height: '40px', padding: 0 }}
+              style={{ width: '40px', height: '48px', padding: 0 }}
               title="Next Day"
             >
               →

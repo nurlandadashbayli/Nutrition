@@ -231,10 +231,10 @@ export default function Workout() {
         <>
           <div className="header-flex">
             <h2 style={{ margin: 0 }}>Workout</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => changeDate(-1)} className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }} title="Previous Day">←</button>
-              <input type="date" className="form-control" value={date} onChange={e => setDate(e.target.value)} style={{ width: 'auto', height: '40px', textAlign: 'center' }} />
-              <button onClick={() => changeDate(1)} className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }} title="Next Day">→</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+              <button onClick={() => changeDate(-1)} className="btn btn-outline" style={{ width: '40px', height: '48px', padding: 0 }} title="Previous Day">←</button>
+              <input type="date" className="form-control" value={date} onChange={e => setDate(e.target.value)} style={{ width: 'auto', height: '48px', textAlign: 'center', flex: 1 }} />
+              <button onClick={() => changeDate(1)} className="btn btn-outline" style={{ width: '40px', height: '48px', padding: 0 }} title="Next Day">→</button>
             </div>
           </div>
 
