@@ -473,7 +473,7 @@ export default function HeroDashboard() {
     const pct = isNaN(value / max) ? 0 : Math.min(value / max, 1);
     const offset = circumference - pct * circumference;
     return (
-      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', maxWidth: '120px' }}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', maxWidth: '90px' }}>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--hero-muted)" strokeWidth={strokeWidth} />
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth}
           strokeDasharray={circumference} strokeDashoffset={isNaN(offset) ? circumference : offset}
