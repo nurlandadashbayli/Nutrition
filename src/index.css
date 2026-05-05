@@ -239,17 +239,19 @@ select.form-control {
 @media (max-width: 480px) {
   .pill-nav {
     border-radius: 12px;
+    padding: 4px;
   }
   
   .nav-links-center {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.3rem;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 2px;
   }
 
   .nav-link {
-    padding: 4px 6px;
-    font-size: 0.65rem;
+    padding: 4px 5px;
+    font-size: 0.6rem;
+    white-space: nowrap;
   }
 }
 
@@ -1158,10 +1160,10 @@ th {
   }
 
   .pill-nav {
-    max-width: 95vw;
-    overflow-x: auto;
-    padding: 6px;
-    gap: 0.5rem;
+    max-width: 98vw;
+    padding: 4px;
+    gap: 2px;
+    overflow-x: hidden;
   }
 
   .pill-nav::-webkit-scrollbar {
@@ -1169,12 +1171,17 @@ th {
   }
 
   .nav-links-center {
-    gap: 0.25rem;
+    gap: 2px;
+    flex-wrap: nowrap;
+    justify-content: space-around;
   }
 
   .nav-link {
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    padding: 6px 4px;
+    font-size: 0.65rem;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
   }
 
   .food-picker {
