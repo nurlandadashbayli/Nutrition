@@ -464,6 +464,7 @@ select.form-control {
   gap: 0.75rem;
   max-width: 180px;
   flex: 1;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -645,8 +646,6 @@ select.form-control {
 /* Weight card specifics (now mostly using standardized widgets) */
 
 .weight-stats-widget {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -656,8 +655,6 @@ select.form-control {
 }
 
 .weight-chart-widget {
-  flex: 1;
-  min-width: 0;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -677,14 +674,10 @@ select.form-control {
 
 .diet-widget,
 .workout-widget {
-  flex: 1;
-  min-width: 0;
   gap: 0.6rem;
 }
 
 .ring-widget {
-  flex: 1;
-  min-width: 0;
   padding: 1rem;
   display: flex;
   align-items: center;

@@ -895,7 +895,7 @@ export default function HeroDashboard() {
           {workoutData ? (
             <div className="hero-card-body">
               {workoutData.logs && workoutData.logs.length > 0 ? (
-                <div className="hero-card-main-row" style={{ overflowX: 'auto', paddingBottom: '1rem' }}>
+                <div className="hero-card-main-row">
                   {[...workoutData.logs].sort((a, b) => {
                     const idxA = workoutWidgetOrder.indexOf(a.id);
                     const idxB = workoutWidgetOrder.indexOf(b.id);
