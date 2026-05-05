@@ -16,6 +16,65 @@ export default function HeroDashboard() {
   const [activeCard, setActiveCard] = useState(0);
   const cardsRef = useRef(null);
 
+  // Drag-and-drop state for diet subcards
+  const [dietWidgetOrder, setDietWidgetOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dietWidgetOrder');
+      return saved ? JSON.parse(saved) : ['ring', 'macros'];
+    } catch { return ['ring', 'macros']; }
+  });
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+  const [draggingId, setDraggingId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const handleDragStart = useCallback((e, id) => {
+    dragItem.current = id;
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Need a tiny timeout so the drag ghost renders properly
+    setTimeout(() => e.target.classList.add('dragging'), 0);
+  }, []);
+
+  const handleDragOver = useCallback((e, id) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    dragOverItem.current = id;
+    setDragOverId(id);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverId(null);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+    if (from && to && from !== to) {
+      setDietWidgetOrder(prev => {
+        const newOrder = [...prev];
+        const fromIdx = newOrder.indexOf(from);
+        const toIdx = newOrder.indexOf(to);
+        if (fromIdx !== -1 && toIdx !== -1) {
+          [newOrder[fromIdx], newOrder[toIdx]] = [newOrder[toIdx], newOrder[fromIdx]];
+        }
+        localStorage.setItem('dietWidgetOrder', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDraggingId(null);
+    setDragOverId(null);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDraggingId(null);
+    setDragOverId(null);
+  }, []);
   const today = getLocalDateString();
 
   useEffect(() => {
@@ -293,7 +352,7 @@ export default function HeroDashboard() {
   return (
     <div className="hero-dashboard">
       <div className="hero-header">
-        <h1 className="hero-greeting">{greeting()} 👋</h1>
+        <h1 className="hero-greeting">{greeting()}</h1>
         <p className="hero-date">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
 
@@ -301,36 +360,60 @@ export default function HeroDashboard() {
         {/* Diet Card */}
         <div className="hero-card" onClick={() => scrollTo('diet')}>
           <div className="hero-card-header">
-            <div className="hero-card-icon">🍽️</div>
             <span className="hero-card-title">Diet</span>
           </div>
           {dietData ? (
             <div className="hero-card-body">
               <div className="hero-card-main-row">
-                <div className="hero-card-ring">
-                  <CircularProgress value={dietData.calories} max={dietData.targetCalories} color="#3b82f6" />
-                  <div className="hero-ring-label">
-                    <span className="hero-ring-value">{dietData.calories}</span>
-                    <span className="hero-ring-unit">kcal</span>
-                  </div>
-                </div>
-                <div className="hero-card-stats">
-                  <div className="hero-stat">
-                    <span className="hero-stat-dot" style={{ background: '#6CA34D' }}></span>
-                    <span className="hero-stat-label">Protein</span>
-                    <span className="hero-stat-value">{dietData.protein}g</span>
-                  </div>
-                  <div className="hero-stat">
-                    <span className="hero-stat-dot" style={{ background: '#E47A2E' }}></span>
-                    <span className="hero-stat-label">Carbs</span>
-                    <span className="hero-stat-value">{dietData.carbs}g</span>
-                  </div>
-                  <div className="hero-stat">
-                    <span className="hero-stat-dot" style={{ background: '#F3B605' }}></span>
-                    <span className="hero-stat-label">Fat</span>
-                    <span className="hero-stat-value">{dietData.fat}g</span>
-                  </div>
-                </div>
+                {dietWidgetOrder.map(id => {
+                  const isRing = id === 'ring';
+                  return (
+                    <div
+                      key={id}
+                      draggable="true"
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, id); }}
+                      onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, id); }}
+                      onDragLeave={(e) => { e.stopPropagation(); handleDragLeave(e); }}
+                      onDrop={(e) => { e.stopPropagation(); handleDrop(e); }}
+                      onDragEnd={(e) => { e.stopPropagation(); handleDragEnd(e); }}
+                      className={`hero-subcard ${isRing ? 'ring-widget' : 'diet-widget'} ${draggingId === id ? 'dragging' : ''} ${dragOverId === id && draggingId !== id ? 'drag-over' : ''}`}
+                    >
+                      {isRing ? (
+                        <div className="hero-card-ring">
+                          <CircularProgress value={dietData.calories} max={dietData.targetCalories} color="#3b82f6" />
+                          <div className="hero-ring-label">
+                            <span className="hero-ring-value">{dietData.calories}</span>
+                            <span className="hero-ring-unit">kcal</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="subcard-row">
+                            <div className="subcard-label">
+                              <span className="subcard-dot" style={{ background: '#6CA34D' }}></span>
+                              Protein
+                            </div>
+                            <div className="subcard-value">{dietData.protein}g</div>
+                          </div>
+                          <div className="subcard-row">
+                            <div className="subcard-label">
+                              <span className="subcard-dot" style={{ background: '#E47A2E' }}></span>
+                              Carbs
+                            </div>
+                            <div className="subcard-value">{dietData.carbs}g</div>
+                          </div>
+                          <div className="subcard-row">
+                            <div className="subcard-label">
+                              <span className="subcard-dot" style={{ background: '#F3B605' }}></span>
+                              Fat
+                            </div>
+                            <div className="subcard-value">{dietData.fat}g</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <div className="hero-card-footer">
                 <span>{Math.max(0, dietData.targetCalories - dietData.calories)} kcal remaining</span>
@@ -345,7 +428,6 @@ export default function HeroDashboard() {
         {/* Weight Card */}
         <div className="hero-card" onClick={() => scrollTo('weight')}>
           <div className="hero-card-header">
-            <div className="hero-card-icon">⚖️</div>
             <span className="hero-card-title">Weight</span>
           </div>
           {weightData ? (
@@ -380,7 +462,6 @@ export default function HeroDashboard() {
         {/* Workout Card */}
         <div className="hero-card" onClick={() => scrollTo('workout')}>
           <div className="hero-card-header">
-            <div className="hero-card-icon">💪</div>
             <span className="hero-card-title">Workout</span>
           </div>
           {workoutData ? (

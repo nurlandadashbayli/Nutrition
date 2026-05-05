@@ -355,7 +355,9 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--hero-border);
+  margin-bottom: 0;
 }
 
 .hero-card-icon {
@@ -373,16 +375,68 @@ select.form-control {
 .hero-card-body {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
   flex: 1;
-  justify-content: center;
 }
 
 .hero-card-main-row {
   display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+}
+
+/* Subcard Widget Style */
+.hero-subcard {
+  background: var(--hero-muted);
+  border: 1px solid var(--hero-border);
+  border-radius: 20px;
+  padding: 1.25rem;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 180px;
+  flex: 1;
+}
+
+.subcard-row {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='dark'] .subcard-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.subcard-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.subcard-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+.subcard-value {
+  font-weight: 600;
+  color: var(--hero-text-strong);
+  font-size: 1rem;
+}
+
+.subcard-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 .hero-card-ring {
@@ -451,7 +505,6 @@ select.form-control {
   opacity: 0.4;
   padding-top: 1rem;
   border-top: 1px solid var(--hero-border);
-  margin-top: auto;
 }
 
 .hero-card-loading {
@@ -492,13 +545,9 @@ select.form-control {
   flex-shrink: 0;
   background: var(--hero-muted);
   border: 1px solid var(--hero-border);
-  border-radius: 14px;
-  padding: 0.75rem 0.6rem 0.35rem 0.4rem;
-  width: 200px;
-}
-
-.hero-weight-chart {
-  /* no extra margin when inside inset */
+  border-radius: 18px;
+  padding: 1.25rem 1rem 0.5rem;
+  width: 220px;
 }
 
 .hero-weight-trend-label {
@@ -517,6 +566,52 @@ select.form-control {
   width: 16px;
   border-top: 2px dashed;
   vertical-align: middle;
+}
+
+.diet-widget {
+  flex: 1;
+  min-width: 0;
+  gap: 0.6rem;
+}
+
+.ring-widget {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diet-widget .subcard-row {
+  justify-content: flex-start;
+  gap: 0.8rem;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.diet-widget .subcard-value {
+  font-size: 0.95rem;
+}
+
+/* Drag-and-drop subcard states */
+.hero-subcard[draggable="true"] {
+  cursor: grab;
+}
+
+.hero-subcard[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.hero-subcard.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+
+.hero-subcard.drag-over {
+  outline: 2px dashed var(--hero-accent, #3b82f6);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--hero-muted) 80%, var(--hero-accent, #3b82f6) 20%);
 }
 
 /* Workout card */
