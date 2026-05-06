@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, query, collection, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,10 +21,34 @@ export default function Profile() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
-    if (currentUser) {
-      fetchProfile();
-      fetchLatestWeight();
-    }
+    if (!currentUser) return;
+
+    // 1. Profile Listener
+    const unsubProfile = onSnapshot(doc(db, 'profiles', currentUser.uid), (snap) => {
+      if (snap.exists()) {
+        setProfile(snap.data());
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // 2. Latest Weight Listener
+    const weightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
+    const unsubWeights = onSnapshot(weightsQ, (snap) => {
+      if (!snap.empty) {
+        const weightList = snap.docs.map(doc => doc.data());
+        weightList.sort((a, b) => b.date.localeCompare(a.date));
+        setLatestWeight(weightList[0].weight);
+      } else {
+        setLatestWeight(null);
+      }
+    });
+
+    return () => {
+      unsubProfile();
+      unsubWeights();
+    };
   }, [currentUser]);
 
   useEffect(() => {
@@ -36,37 +60,7 @@ export default function Profile() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  async function fetchProfile() {
-    try {
-      const docRef = doc(db, 'profiles', currentUser.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setProfile(docSnap.data());
-      }
-    } catch (err) {
-      console.error('Failed to fetch profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  async function fetchLatestWeight() {
-    try {
-      const { collection, query, where, getDocs } = await import('firebase/firestore');
-      const q = query(
-        collection(db, 'weights'),
-        where('userId', '==', currentUser.uid)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const weightList = querySnapshot.docs.map(doc => doc.data());
-        weightList.sort((a, b) => b.date.localeCompare(a.date));
-        setLatestWeight(weightList[0].weight);
-      }
-    } catch (err) {
-      console.error('Failed to fetch latest weight:', err);
-    }
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();

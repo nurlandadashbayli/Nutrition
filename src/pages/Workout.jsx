@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Workout() {
@@ -54,37 +54,32 @@ export default function Workout() {
   };
 
   useEffect(() => {
-    if (currentUser) {
-      fetchExercises();
-      fetchLogs();
-    }
-  }, [currentUser]);
+    if (!currentUser) return;
 
-  async function fetchExercises() {
-    try {
-      const q = query(collection(db, 'exercises'), where('userId', '==', currentUser.uid));
-      const snap = await getDocs(q);
+    // 1. Exercises Listener
+    const exercisesQ = query(collection(db, 'exercises'), where('userId', '==', currentUser.uid));
+    const unsubExercises = onSnapshot(exercisesQ, (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => a.name.localeCompare(b.name));
       setExercises(list);
-    } catch (err) {
-      console.error('fetchExercises error:', err);
-    }
-  }
+    });
 
-  async function fetchLogs() {
-    try {
-      const q = query(collection(db, 'workoutLogs'), where('userId', '==', currentUser.uid));
-      const snap = await getDocs(q);
+    // 2. Workout Logs Listener
+    const logsQ = query(collection(db, 'workoutLogs'), where('userId', '==', currentUser.uid));
+    const unsubLogs = onSnapshot(logsQ, (snap) => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Filter out old-format logs
       const valid = all.filter(l => l.exerciseName && Array.isArray(l.sets));
       valid.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setLogs(valid);
-    } catch (err) {
-      console.error('fetchLogs error:', err);
-    }
-  }
+    });
+
+    return () => {
+      unsubExercises();
+      unsubLogs();
+    };
+  }, [currentUser]);
+
+
 
   // Exercise CRUD
   async function saveExercise() {
@@ -100,7 +95,6 @@ export default function Workout() {
         setMessage('Exercise added!');
       }
       resetForm();
-      fetchExercises();
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       console.error(err);
@@ -129,7 +123,6 @@ export default function Workout() {
     try {
       setLoading(true);
       await deleteDoc(doc(db, 'exercises', id));
-      fetchExercises();
       setMessage('Exercise removed');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) { console.error(err); }
@@ -167,7 +160,6 @@ export default function Workout() {
         createdAt: new Date().toISOString()
       });
       setNewSets([{ weight: '', reps: '' }]);
-      await fetchLogs();
       setMessage(`Logged ${selectedExercise.name}!`);
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
@@ -180,7 +172,6 @@ export default function Workout() {
     if (!window.confirm('Delete this log entry?')) return;
     try {
       await deleteDoc(doc(db, 'workoutLogs', id));
-      await fetchLogs();
       setMessage('Log deleted');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) { console.error(err); }
@@ -199,7 +190,6 @@ export default function Workout() {
       for (const s of samples) {
         await addDoc(collection(db, 'exercises'), { ...s, userId: currentUser.uid, createdAt: new Date().toISOString() });
       }
-      fetchExercises();
       setMessage('Sample exercises loaded!');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) { console.error(err); }

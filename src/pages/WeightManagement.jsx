@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 
@@ -18,33 +18,26 @@ export default function WeightManagement() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (currentUser) {
-      fetchWeights();
-    }
-  }, [currentUser]);
+    if (!currentUser) return;
 
-  async function fetchWeights() {
-    try {
-      const q = query(
-        collection(db, 'weights'),
-        where('userId', '==', currentUser.uid)
-      );
-      const querySnapshot = await getDocs(q);
-      const weightList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
+    const q = query(
+      collection(db, 'weights'),
+      where('userId', '==', currentUser.uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const weightList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Sort chronologically for the chart
       weightList.sort((a, b) => a.date.localeCompare(b.date));
-      
-      // Limit to last 30 entries if needed
-      const last30Weights = weightList.slice(-30);
-      
-      setWeights(last30Weights);
-    } catch (err) {
-      console.error('Failed to fetch weights:', err);
-    } finally {
+      // Limit to last 30 entries
+      setWeights(weightList.slice(-30));
       setLoading(false);
-    }
-  }
+    });
+
+    return () => unsub();
+  }, [currentUser]);
+
+
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -77,7 +70,6 @@ export default function WeightManagement() {
       }
 
       setWeight('');
-      fetchWeights();
     } catch (err) {
       setError('Failed to save weight.');
     } finally {
@@ -96,7 +88,6 @@ export default function WeightManagement() {
     if (!window.confirm('Delete this weight entry?')) return;
     try {
       await deleteDoc(doc(db, 'weights', id));
-      fetchWeights();
     } catch (err) {
       setError('Failed to delete.');
     }

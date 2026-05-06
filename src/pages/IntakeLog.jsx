@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 
@@ -29,68 +29,90 @@ export default function IntakeLog() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (currentUser) {
-      fetchFoods();
-      fetchWeeklyLogs();
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (currentUser && date) {
-      fetchLogs();
-      fetchWeight();
-    }
-  }, [currentUser, date]);
-
-  async function fetchFoods() {
-    try {
-      const q = query(collection(db, 'foods'), where('userId', '==', currentUser.uid));
-      const querySnapshot = await getDocs(q);
-      const foodList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!currentUser) return;
+    
+    // 1. Foods Listener
+    const foodsQ = query(collection(db, 'foods'), where('userId', '==', currentUser.uid));
+    const unsubFoods = onSnapshot(foodsQ, (snap) => {
+      const foodList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       foodList.sort((a, b) => a.name.localeCompare(b.name));
       setFoods(foodList);
       if (foodList.length > 0) {
-        setSelectedFoodId(foodList[0].id);
+        setSelectedFoodId(prev => prev || foodList[0].id);
       }
-    } catch (err) {
-      console.error(err);
-    }
-  }
+    });
 
-  async function fetchLogs() {
-    try {
-      const q = query(collection(db, 'logs'),
-        where('userId', '==', currentUser.uid),
-        where('date', '==', date)
-      );
-      const querySnapshot = await getDocs(q);
-      const logList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // 2. Profile Listener
+    const unsubProfile = onSnapshot(doc(db, 'profiles', currentUser.uid), (snap) => {
+      if (snap.exists()) setUserProfile(snap.data());
+    });
+
+    return () => {
+      unsubFoods();
+      unsubProfile();
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !date) return;
+
+    // 3. Today's Logs Listener
+    const logsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid), where('date', '==', date));
+    const unsubLogs = onSnapshot(logsQ, (snap) => {
+      const logList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       logList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setLogs(logList);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch logs.');
-    }
-  }
+    });
 
-  async function fetchWeight() {
-    try {
-      setWeight('');
-      setWeightId(null);
-      const q = query(collection(db, 'weights'),
-        where('userId', '==', currentUser.uid),
-        where('date', '==', date)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const weightDoc = querySnapshot.docs[0];
+    // 4. Today's Weight Listener
+    const weightQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid), where('date', '==', date));
+    const unsubWeight = onSnapshot(weightQ, (snap) => {
+      if (!snap.empty) {
+        const weightDoc = snap.docs[0];
         setWeight(weightDoc.data().weight);
         setWeightId(weightDoc.id);
+      } else {
+        setWeight('');
+        setWeightId(null);
       }
-    } catch (err) {
-      console.error('Failed to fetch weight:', err);
-    }
-  }
+    });
+
+    // 5. Weekly Data Listener (fetching all user logs/weights and filtering in memory as before)
+    const allLogsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid));
+    const unsubWeeklyLogs = onSnapshot(allLogsQ, (snap) => {
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(getLocalDateString(d));
+      }
+      const earliestDate = dates[dates.length - 1];
+      const allUserLogs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setWeeklyLogs(allUserLogs.filter(log => log.date >= earliestDate));
+    });
+
+    const allWeightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
+    const unsubWeeklyWeights = onSnapshot(allWeightsQ, (snap) => {
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(getLocalDateString(d));
+      }
+      const earliestDate = dates[dates.length - 1];
+      const allUserWeights = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setWeeklyWeights(allUserWeights.filter(w => w.date >= earliestDate));
+    });
+
+    return () => {
+      unsubLogs();
+      unsubWeight();
+      unsubWeeklyLogs();
+      unsubWeeklyWeights();
+    };
+  }, [currentUser, date]);
+
+
 
   async function handleSaveWeight() {
     if (!weight || weight <= 0) return;
@@ -110,9 +132,7 @@ export default function IntakeLog() {
           ...weightData,
           createdAt: new Date().toISOString()
         });
-        fetchWeight(); // Refresh to get the new ID
       }
-      fetchWeeklyLogs();
     } catch (err) {
       console.error('Failed to save weight:', err);
     } finally {
@@ -120,53 +140,7 @@ export default function IntakeLog() {
     }
   }
 
-  async function fetchWeeklyLogs() {
-    try {
-      // Get dates for the last 7 days
-      const dates = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        dates.push(getLocalDateString(d));
-      }
 
-      const earliestDate = dates[dates.length - 1];
-
-      // Querying only by userId to avoid composite index requirement for date range
-      // We can filter the dates in memory
-      const q = query(
-        collection(db, 'logs'),
-        where('userId', '==', currentUser.uid)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const allUserLogs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Filter for logs within the last 7 days
-      const filteredLogs = allUserLogs.filter(log => log.date >= earliestDate);
-
-      setWeeklyLogs(filteredLogs);
-
-      // Fetch weights for the same period
-      const weightsQ = query(
-        collection(db, 'weights'),
-        where('userId', '==', currentUser.uid)
-      );
-      const weightsSnapshot = await getDocs(weightsQ);
-      const allWeights = weightsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const filteredWeights = allWeights.filter(w => w.date >= earliestDate);
-      setWeeklyWeights(filteredWeights);
-
-      // Fetch Profile
-      const profRef = doc(db, 'profiles', currentUser.uid);
-      const profSnap = await getDoc(profRef);
-      if (profSnap.exists()) {
-        setUserProfile(profSnap.data());
-      }
-    } catch (err) {
-      console.error('Failed to fetch weekly logs:', err);
-    }
-  }
 
   async function handleAddLog(e) {
     e.preventDefault();
@@ -200,8 +174,6 @@ export default function IntakeLog() {
         createdAt: new Date().toISOString()
       });
       setWeightInput('');
-      fetchLogs();
-      fetchWeeklyLogs();
     } catch (err) {
       setError('Failed to add log.');
     } finally {
@@ -212,8 +184,6 @@ export default function IntakeLog() {
   async function handleDeleteLog(id) {
     try {
       await deleteDoc(doc(db, 'logs', id));
-      fetchLogs();
-      fetchWeeklyLogs();
     } catch (err) {
       console.error('Failed to delete log', err);
     }

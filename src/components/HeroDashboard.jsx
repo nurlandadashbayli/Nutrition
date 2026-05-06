@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -15,6 +15,11 @@ export default function HeroDashboard() {
   const [workoutData, setWorkoutData] = useState(null);
   const [profile, setProfile] = useState(null);
   const [alcoholData, setAlcoholData] = useState(null);
+  const [rawLogs, setRawLogs] = useState([]);
+  const [rawWeights, setRawWeights] = useState([]);
+  const [rawWorkouts, setRawWorkouts] = useState([]);
+  const [rawAlcoholFoods, setRawAlcoholFoods] = useState([]);
+  const [rawAlcoholLogs, setRawAlcoholLogs] = useState([]);
   const [isEditingAlcohol, setIsEditingAlcohol] = useState(false);
   const [activeCard, setActiveCard] = useState(0);
   const [expandedWidget, setExpandedWidget] = useState(null); // { type: 'calories' | 'macros' | 'alcohol', data: any }
@@ -120,8 +125,140 @@ export default function HeroDashboard() {
   const today = getLocalDateString();
 
   useEffect(() => {
-    if (currentUser) fetchAll();
-  }, [currentUser]);
+    if (!currentUser) return;
+
+    // 1. Profile Listener
+    const unsubProfile = onSnapshot(doc(db, 'profiles', currentUser.uid), (snap) => {
+      setProfile(snap.exists() ? snap.data() : null);
+    });
+
+    // 2. Logs Listener (Today)
+    const logsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid), where('date', '==', today));
+    const unsubLogs = onSnapshot(logsQ, (snap) => {
+      setRawLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // 3. Weights Listener (All)
+    const weightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
+    const unsubWeights = onSnapshot(weightsQ, (snap) => {
+      const allWeights = snap.docs.map(d => ({ ...d.data(), weight: Number(d.data().weight) || 0 }));
+      allWeights.sort((a, b) => a.date.localeCompare(b.date));
+      setRawWeights(allWeights);
+    });
+
+    // 4. Workouts Listener (Today)
+    const workQ = query(collection(db, 'workoutLogs'), where('userId', '==', currentUser.uid), where('date', '==', today));
+    const unsubWorkouts = onSnapshot(workQ, (snap) => {
+      setRawWorkouts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // 5. Alcohol Foods Listener
+    const alcoholFoodsQ = query(collection(db, 'foods'), where('userId', '==', currentUser.uid), where('tags', 'array-contains', 'alcohol'));
+    const unsubAlcoholFoods = onSnapshot(alcoholFoodsQ, (snap) => {
+      setRawAlcoholFoods(snap.docs.map(d => d.id));
+    });
+
+    // 6. Alcohol Logs Listener (Last 50 logs for user)
+    const allLogsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid), orderBy('date', 'desc'), limit(50));
+    const unsubAlcoholLogs = onSnapshot(allLogsQ, (snap) => {
+      setRawAlcoholLogs(snap.docs.map(d => d.data()));
+    });
+
+    return () => {
+      unsubProfile();
+      unsubLogs();
+      unsubWeights();
+      unsubWorkouts();
+      unsubAlcoholFoods();
+      unsubAlcoholLogs();
+    };
+  }, [currentUser, today]);
+
+  // Recalculate everything when raw data changes
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // --- Diet Calculations ---
+    const totalCal = rawLogs.reduce((s, l) => s + (Number(l.totalCalories) || 0), 0);
+    const totalProtein = rawLogs.reduce((s, l) => s + (Number(l.totalProtein) || 0), 0);
+    const totalCarbs = rawLogs.reduce((s, l) => s + (Number(l.totalCarbs) || 0), 0);
+    const totalFat = rawLogs.reduce((s, l) => s + (Number(l.totalFat) || 0), 0);
+
+    const latestWeight = rawWeights.length > 0 ? rawWeights[rawWeights.length - 1] : null;
+    const todayWeight = rawWeights.find(w => w.date === today);
+
+    let targetCal = 2400;
+    let targetProtein = 150;
+    if (profile && latestWeight) {
+      const birthDate = new Date(profile.birthday);
+      const now = new Date();
+      let age = now.getFullYear() - birthDate.getFullYear();
+      if (now.getMonth() < birthDate.getMonth() || (now.getMonth() === birthDate.getMonth() && now.getDate() < birthDate.getDate())) age--;
+      const h = Number(profile.height);
+      const w = latestWeight.weight;
+      let bmr = profile.gender === 'male' ? 10 * w + 6.25 * h - 5 * age + 5 : 10 * w + 6.25 * h - 5 * age - 161;
+      const tdee = Math.round(bmr * Number(profile.activityLevel));
+      const weeklyGoal = profile.weeklyLossGoal ?? 0.5;
+      targetCal = Math.round(tdee - weeklyGoal * 1100);
+      targetProtein = Math.round(w * 2.2);
+    }
+
+    setDietData({
+      calories: Math.round(totalCal),
+      targetCalories: targetCal,
+      protein: Math.round(totalProtein),
+      targetProtein,
+      carbs: Math.round(totalCarbs),
+      fat: Math.round(totalFat),
+      logCount: rawLogs.length,
+      logs: rawLogs
+    });
+
+    // --- Weight Calculations ---
+    const last14 = rawWeights.slice(-14);
+    const last7ForDelta = rawWeights.slice(-7);
+    const weekAgoWeight = last7ForDelta.length > 1 ? Number(last7ForDelta[0].weight) : null;
+    const currentWeight = latestWeight ? Number(latestWeight.weight) : null;
+    const weekDelta = weekAgoWeight && currentWeight ? Number((currentWeight - weekAgoWeight).toFixed(1)) : null;
+    
+    setWeightData({
+      current: currentWeight,
+      todayLogged: !!todayWeight,
+      weekDelta,
+      trend: last14.map(w => w.weight),
+      trendDates: last14.map(w => w.date),
+      totalEntries: rawWeights.length,
+      latestDate: latestWeight ? latestWeight.date : null
+    });
+
+    // --- Workout Calculations ---
+    const validWorkouts = rawWorkouts.filter(l => l.exerciseName && Array.isArray(l.sets));
+    const totalSets = validWorkouts.reduce((s, l) => s + l.sets.length, 0);
+    const totalVolume = validWorkouts.reduce((s, l) => s + l.sets.reduce((a, set) => a + Number(set.weight) * Number(set.reps), 0), 0);
+    const exerciseNames = [...new Set(validWorkouts.map(l => l.exerciseName))];
+    
+    setWorkoutData({
+      exercises: exerciseNames.length,
+      sets: totalSets,
+      volume: totalVolume,
+      names: exerciseNames,
+      logs: validWorkouts
+    });
+
+    // --- Alcohol Calculations ---
+    let lastAlcoholDate = profile?.lastAlcoholDate || null;
+    if (rawAlcoholFoods.length > 0) {
+      const alcoholLogs = rawAlcoholLogs.filter(l => rawAlcoholFoods.includes(l.foodId));
+      if (alcoholLogs.length > 0) {
+        const latestLogDate = alcoholLogs[0].date;
+        if (!lastAlcoholDate || latestLogDate > lastAlcoholDate) {
+          lastAlcoholDate = latestLogDate;
+        }
+      }
+    }
+    setAlcoholData({ lastDate: lastAlcoholDate });
+
+  }, [profile, rawLogs, rawWeights, rawWorkouts, rawAlcoholFoods, rawAlcoholLogs, currentUser, today]);
 
   const handleScroll = useCallback(() => {
     const container = cardsRef.current;
@@ -190,7 +327,6 @@ export default function HeroDashboard() {
         totalFat: Number((foodData.fat * ratio).toFixed(1)),
         createdAt: new Date().toISOString()
       });
-      fetchAll(); // Refresh dashboard
       setExpandedWidget(null);
     } catch (err) {
       console.error('Quick log error:', err);
@@ -205,113 +341,7 @@ export default function HeroDashboard() {
     container.scrollTo({ left: index * (cardWidth + gap), behavior: 'smooth' });
   };
 
-  async function fetchAll() {
-    try {
-      const profSnap = await getDoc(doc(db, 'profiles', currentUser.uid));
-      const profData = profSnap.exists() ? profSnap.data() : null;
-      setProfile(profData);
 
-      const logsQ = query(collection(db, 'logs'), where('userId', '==', currentUser.uid), where('date', '==', today));
-      const logsSnap = await getDocs(logsQ);
-      const logs = logsSnap.docs.map(d => d.data());
-      const totalCal = logs.reduce((s, l) => s + (Number(l.totalCalories) || 0), 0);
-      const totalProtein = logs.reduce((s, l) => s + (Number(l.totalProtein) || 0), 0);
-      const totalCarbs = logs.reduce((s, l) => s + (Number(l.totalCarbs) || 0), 0);
-      const totalFat = logs.reduce((s, l) => s + (Number(l.totalFat) || 0), 0);
-
-      const weightsQ = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
-      const weightsSnap = await getDocs(weightsQ);
-      const allWeights = weightsSnap.docs.map(d => {
-        const data = d.data();
-        return { ...data, weight: Number(data.weight) || 0 };
-      });
-      allWeights.sort((a, b) => a.date.localeCompare(b.date));
-      const latestWeight = allWeights.length > 0 ? allWeights[allWeights.length - 1] : null;
-      const todayWeight = allWeights.find(w => w.date === today);
-
-      let targetCal = 2400;
-      let targetProtein = 150;
-      if (profData && latestWeight) {
-        const birthDate = new Date(profData.birthday);
-        const now = new Date();
-        let age = now.getFullYear() - birthDate.getFullYear();
-        if (now.getMonth() < birthDate.getMonth() || (now.getMonth() === birthDate.getMonth() && now.getDate() < birthDate.getDate())) age--;
-        const h = Number(profData.height);
-        const w = latestWeight.weight;
-        let bmr = profData.gender === 'male' ? 10 * w + 6.25 * h - 5 * age + 5 : 10 * w + 6.25 * h - 5 * age - 161;
-        const tdee = Math.round(bmr * Number(profData.activityLevel));
-        const weeklyGoal = profData.weeklyLossGoal ?? 0.5;
-        targetCal = Math.round(tdee - weeklyGoal * 1100);
-        targetProtein = Math.round(w * 2.2);
-      }
-
-      setDietData({
-        calories: Math.round(totalCal),
-        targetCalories: targetCal,
-        protein: Math.round(totalProtein),
-        targetProtein,
-        carbs: Math.round(totalCarbs),
-        fat: Math.round(totalFat),
-        logCount: logs.length,
-        logs: logs
-      });
-
-      const last14 = allWeights.slice(-14);
-      const last7ForDelta = allWeights.slice(-7);
-      const weekAgoWeight = last7ForDelta.length > 1 ? Number(last7ForDelta[0].weight) : null;
-      const currentWeight = latestWeight ? Number(latestWeight.weight) : null;
-      const weekDelta = weekAgoWeight && currentWeight ? Number((currentWeight - weekAgoWeight).toFixed(1)) : null;
-      setWeightData({
-        current: currentWeight,
-        todayLogged: !!todayWeight,
-        weekDelta,
-        trend: last14.map(w => w.weight),
-        trendDates: last14.map(w => w.date),
-        totalEntries: allWeights.length,
-        latestDate: latestWeight ? latestWeight.date : null
-      });
-
-      const workQ = query(collection(db, 'workoutLogs'), where('userId', '==', currentUser.uid), where('date', '==', today));
-      const workSnap = await getDocs(workQ);
-      const workLogs = workSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.exerciseName && Array.isArray(l.sets));
-      const totalSets = workLogs.reduce((s, l) => s + l.sets.length, 0);
-      const totalVolume = workLogs.reduce((s, l) => s + l.sets.reduce((a, set) => a + Number(set.weight) * Number(set.reps), 0), 0);
-      const exerciseNames = [...new Set(workLogs.map(l => l.exerciseName))];
-      setWorkoutData({
-        exercises: exerciseNames.length,
-        sets: totalSets,
-        volume: totalVolume,
-        names: exerciseNames,
-        logs: workLogs
-      });
-
-      const alcoholFoodsQ = query(collection(db, 'foods'), where('userId', '==', currentUser.uid), where('tags', 'array-contains', 'alcohol'));
-      const alcoholFoodsSnap = await getDocs(alcoholFoodsQ);
-      const alcoholFoodIds = alcoholFoodsSnap.docs.map(doc => doc.id);
-
-      let lastAlcoholDate = profData?.lastAlcoholDate || null;
-
-      if (alcoholFoodIds.length > 0) {
-        const alcLogsQ = query(
-          collection(db, 'logs'),
-          where('userId', '==', currentUser.uid),
-          where('foodId', 'in', alcoholFoodIds.slice(0, 30))
-        );
-        const alcLogsSnap = await getDocs(alcLogsQ);
-        const logDates = alcLogsSnap.docs.map(d => d.data().date);
-        if (logDates.length > 0) {
-          const latestLogDate = logDates.sort().reverse()[0];
-          if (!lastAlcoholDate || latestLogDate > lastAlcoholDate) {
-            lastAlcoholDate = latestLogDate;
-          }
-        }
-      }
-      setAlcoholData({ lastDate: lastAlcoholDate });
-
-    } catch (err) {
-      console.error('HeroDashboard fetch error:', err);
-    }
-  }
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
