@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import CollapsibleCard from '../components/CollapsibleCard';
 
@@ -93,6 +93,43 @@ export default function WeightManagement() {
     }
   }
 
+  async function handleExportData() {
+    try {
+      setSaving(true);
+      setError('');
+      const q = query(collection(db, 'weights'), where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      const allWeights = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date,
+          weight: data.weight,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        };
+      });
+      
+      allWeights.sort((a, b) => a.date.localeCompare(b.date));
+
+      const dataStr = JSON.stringify({ weights: allWeights }, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `weight_data_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to export weight data.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const maxWeight = weights.length > 0 ? Math.max(...weights.map(w => w.weight)) * 1.1 : 100;
   const minWeight = weights.length > 0 ? Math.min(...weights.map(w => w.weight)) * 0.9 : 0;
   const range = maxWeight - minWeight;
@@ -138,8 +175,15 @@ export default function WeightManagement() {
       </div>
 
       <div className="card">
-        <h2>Weight Tracking</h2>
-        <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Showing your last 30 entries</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h2 style={{ marginTop: 0 }}>Weight Tracking</h2>
+            <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Showing your last 30 entries</p>
+          </div>
+          <button onClick={handleExportData} className="btn btn-outline" disabled={saving}>
+            {saving ? 'Exporting...' : 'Export Data (JSON)'}
+          </button>
+        </div>
 
         {loading ? (
           <p>Loading data...</p>
