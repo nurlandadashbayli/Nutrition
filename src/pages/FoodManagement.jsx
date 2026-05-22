@@ -171,6 +171,59 @@ export default function FoodManagement() {
     }
   }
 
+  async function handleExportData() {
+    try {
+      setLoading(true);
+      setError('');
+      const q = query(collection(db, 'logs'), where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      const logList = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date,
+          foodName: data.foodName,
+          servingSize: data.servingSize,
+          weight: data.weight,
+          totalCalories: data.totalCalories,
+          totalProtein: data.totalProtein,
+          totalCarbs: data.totalCarbs,
+          totalFat: data.totalFat,
+          createdAt: data.createdAt
+        };
+      });
+
+      const exportData = {
+        foods: foods.map(f => ({
+          name: f.name,
+          servingSize: f.servingSize,
+          calories: f.calories,
+          protein: f.protein,
+          fat: f.fat,
+          carbs: f.carbs,
+          tags: f.tags
+        })),
+        intakes: logList
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `nutrition_data_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to export data.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div>
       <div className="card">
@@ -232,6 +285,11 @@ export default function FoodManagement() {
       </div>
 
       <CollapsibleCard title="Your Foods" count={foods.length}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <button onClick={handleExportData} className="btn btn-outline" disabled={loading}>
+            {loading ? 'Exporting...' : 'Export Data (JSON)'}
+          </button>
+        </div>
         {foods.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No foods added yet.</p>
         ) : (
